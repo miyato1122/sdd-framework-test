@@ -3,8 +3,10 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 // OpacityControlプラグインの読み込み
+// 注: v1.8.0 以降は package.json の exports に CSS が含まれないため、
+//     付属 CSS は ./style.css にインライン化して取り込んでいる。
 import OpacityControl from 'maplibre-gl-opacity';
-import 'maplibre-gl-opacity/dist/maplibre-gl-opacity.css';
+import './style.css';
 
 // 地点間の距離を計算するモジュール
 import distance from '@turf/distance';
