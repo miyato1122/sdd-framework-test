@@ -3,6 +3,8 @@ schema: spec-driven
 context: |
   言語：日本語
   すべての成果物は日本語で作成してください。
+  技術スタック：Vanilla JavaScript, Node,js, Vite, MapLibre GL JS
+  分野：地図アプリ
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.

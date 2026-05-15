@@ -1,0 +1,226 @@
+name: my-workflow
+version: 1
+description: OpenSpec ワークフロー - proposal → specs → design → tasks
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: 変更の WHY を確立する提案ドキュメント
+    template: proposal.md
+    instruction: >
+      この変更が**なぜ**必要かを示す提案ドキュメントを作成してください。
+
+
+      セクション:
+
+      - **なぜ**: 解決する問題や機会を 1〜2 文で。なぜ今やるのか。
+
+      - **変更内容**: 変更点を箇条書きで列挙。新機能・修正・削除を具体的に。破壊的変更には **BREAKING** を付ける。
+
+      - **機能（Capabilities）**: 作成・修正する spec を明示:
+        - **新規機能**: 新規に導入する機能（capability）。各 `specs/<name>/spec.md` になる。名前は kebab-case（例: `user-auth`, `data-export`）。
+        - **変更機能**: REQUIREMENTS が変わる既存の機能（capability）。仕様レベルの振る舞いが変わる場合のみ。各機能ごとに delta spec ファイルが必要。既存 spec 名は `openspec/specs/` を確認すること。要件変更がなければ空欄で OK。
+      - **影響範囲**: 影響を受けるコード・API・依存関係・システム。
+
+
+      重要: 機能（Capabilities）セクションは proposal と specs フェーズの契約点となる最重要セクション。
+
+      埋める前に既存 spec を必ず調査すること。
+
+      ここに列挙した機能ごとに対応する spec ファイルが必要になる。
+
+
+      簡潔に（1〜2 ページ）。「**なぜ**」に集中し、「どう実装するか」は design.md に書く。
+
+
+      これは基盤となるドキュメント。specs / design / tasks はすべてこの上に構築される。
+    requires: []
+  - id: specs
+    generates: specs/**/*.md
+    description: 変更に伴う詳細仕様（delta spec）
+    template: spec.md
+    instruction: >
+      システムが**何を**するかを定義する仕様ファイルを作成してください。
+
+
+      proposal の機能（Capabilities）セクションに列挙した機能ごとに 1 ファイル作成する。
+
+      - 新規機能: proposal で指定した kebab-case 名をそのまま使う（`specs/<capability>/spec.md`）。
+
+      - 変更機能: `openspec/specs/<capability>/` の既存フォルダ名を使い、`specs/<capability>/spec.md` に delta spec を作成する。
+
+
+      Delta operations（`##` 見出しを使用）:
+
+      - **ADDED Requirements**: 新規追加する要件
+
+      - **MODIFIED Requirements**: 振る舞いが変わる要件 — **更新後の全文**を含めること
+
+      - **REMOVED Requirements**: 廃止する要件 — **Reason** と **Migration** を必ず含めること
+
+      - **RENAMED Requirements**: 名称変更のみ — `FROM:` / `TO:` 形式
+
+
+      形式要件:
+
+      - 各要件: `### Requirement: <名前>` の後に説明文
+
+      - 正規要件には SHALL / MUST を使う（should / may は避ける）
+
+      - 各シナリオ: `#### Scenario: <名前>` + WHEN / THEN 形式
+
+      - **重要**: シナリオは必ずハッシュ 4 つ（`####`）を使う。ハッシュ 3 つや箇条書きにすると黙ってパース失敗する。
+
+      - すべての要件に少なくとも 1 つのシナリオが必要。
+
+
+      MODIFIED Requirements の作業手順:
+
+      1. `openspec/specs/<capability>/spec.md` から既存の要件ブロックを探す。
+
+      2. `### Requirement:` から全シナリオまでを**全体コピー**する。
+
+      3. `## MODIFIED Requirements` 配下に貼り付け、振る舞いに合わせて編集する。
+
+      4. ヘッダー文字列は元と完全一致させる（空白は無視される）。
+
+
+      よくある落とし穴: MODIFIED に部分内容しか書かないと archive 時にディテールが失われる。
+
+      振る舞いを変えずに新しい関心事を加える場合は ADDED を使うこと。
+
+
+      例:
+
+      ```
+
+      ## ADDED Requirements
+
+
+      ### Requirement: ユーザーがデータをエクスポートできる
+
+      システムは CSV 形式でユーザーがデータをエクスポートできることを SHALL 保証する。
+
+
+      #### Scenario: エクスポートが成功する
+
+      - **WHEN** ユーザーが「エクスポート」ボタンをクリックする
+
+      - **THEN** システムが全ユーザーデータを含む CSV ファイルをダウンロードさせる
+
+
+      ## REMOVED Requirements
+
+
+      ### Requirement: 旧エクスポート
+
+      **Reason**: 新エクスポートシステムへの置き換えのため
+
+      **Migration**: 新エンドポイント /api/v2/export を使用すること
+
+      ```
+
+
+      仕様はテスト可能であること — 各シナリオは潜在的なテストケースになる。
+    requires:
+      - proposal
+  - id: design
+    generates: design.md
+    description: 実装方法を示す技術設計ドキュメント
+    template: design.md
+    instruction: >
+      変更を**どう実装するか**を説明する設計ドキュメントを作成してください。
+
+
+      design.md を作る判断基準（いずれかに当てはまる場合のみ作成）:
+
+      - 横断的な変更（複数サービス／モジュール）または新しいアーキテクチャパターン
+
+      - 新規外部依存の追加、または大きなデータモデル変更
+
+      - セキュリティ・パフォーマンス・マイグレーションの複雑さがある
+
+      - 実装前に技術判断を整理したい曖昧さがある
+
+
+      セクション:
+
+      - **背景**: 背景・現状・制約・関係者
+
+      - **ゴール / 非ゴール**: 達成すること、明示的に除外すること
+
+      - **設計判断**: 主要な技術選択と根拠（なぜ X を選び、Y を選ばなかったのか）。各判断について検討した代替案も記載すること。
+
+      - **リスク / トレードオフ**: 既知の制約、起こり得る問題。形式: `[リスク] → 緩和策`
+
+      - **マイグレーション計画**: デプロイ手順、ロールバック戦略（該当する場合）
+
+      - **未解決事項**: 残っている判断や不明点
+
+
+      アーキテクチャと方針に集中し、行単位の実装には踏み込まないこと。
+
+      動機は proposal、要件は specs を参照すること。
+
+
+      良い設計ドキュメントは技術判断の「なぜ」を説明する。
+    requires:
+      - proposal
+  - id: tasks
+    generates: tasks.md
+    description: トラッキング可能な実装チェックリスト
+    template: tasks.md
+    instruction: >
+      実装作業を分解したタスクリストを作成してください。
+
+
+      **重要: 以下のテンプレートに厳密に従うこと**。apply フェーズはチェックボックス形式をパースして進捗を追跡する。
+
+      `- [ ]` 形式でないタスクは追跡されない。
+
+
+      ガイドライン:
+
+      - 関連タスクは `##` 番号付き見出しでグループ化する
+
+      - 各タスクは必ずチェックボックス: `- [ ] X.Y タスクの説明`
+
+      - 1 セッションで完了できる粒度に分割する
+
+      - 依存関係順に並べる（何を先にやる必要があるか？）
+
+
+      例:
+
+      ```
+
+      ## 1. セットアップ
+
+
+      - [ ] 1.1 新規モジュール構造の作成
+
+      - [ ] 1.2 package.json への依存追加
+
+
+      ## 2. コア実装
+
+
+      - [ ] 2.1 データエクスポート関数の実装
+
+      - [ ] 2.2 CSV フォーマットユーティリティの追加
+
+      ```
+
+
+      何を作るかは specs、どう作るかは design を参照すること。
+
+      各タスクは検証可能であること — 完了の判定が可能であること。
+    requires:
+      - specs
+      - design
+apply:
+  requires:
+    - tasks
+  tracks: tasks.md
+  instruction: |
+    コンテキストファイルを読み、未完了タスクを順に処理し、完了したらチェックを付けてください。
+    ブロッカーに遭遇したり明確化が必要になったら一時停止してください。
