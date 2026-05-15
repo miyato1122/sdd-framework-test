@@ -55,3 +55,18 @@
     border: 0;
     background-image: linear-gradient(to bottom, #1253a4 0, #1253a4);
 }
+
+/* 背景地図切替コントロール（BasemapSwitcherControl）。
+ * MapLibre 標準の .maplibregl-ctrl-group カード見た目に合わせ、
+ * 内部パディングとラジオの行間のみ最小限に調整する。 */
+#basemap-switcher {
+    padding: 8px 10px;
+}
+#basemap-switcher label {
+    display: block;
+    line-height: 1.6;
+    cursor: pointer;
+}
+#basemap-switcher input[type='radio'] {
+    margin-right: 5px;
+}

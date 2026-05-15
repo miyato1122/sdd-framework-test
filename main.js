@@ -33,6 +33,38 @@ const map = new maplibregl.Map({
                 attribution:
                     '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             },
+            gsi_std: {
+                type: 'raster',
+                tiles: [
+                    'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+                ],
+                maxzoom: 18,
+                tileSize: 256,
+                attribution:
+                    '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+            },
+            gsi_photo: {
+                type: 'raster',
+                tiles: [
+                    'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+                ],
+                minzoom: 2,
+                maxzoom: 18,
+                tileSize: 256,
+                attribution:
+                    '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+            },
+            gsi_blank: {
+                type: 'raster',
+                tiles: [
+                    'https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png',
+                ],
+                minzoom: 5,
+                maxzoom: 14,
+                tileSize: 256,
+                attribution:
+                    '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+            },
             // 重ねるハザードマップここから
             hazard_flood: {
                 type: 'raster',
@@ -125,11 +157,30 @@ const map = new maplibregl.Map({
             },
         },
         layers: [
-            // 背景地図レイヤー
+            // 背景地図レイヤー（同時に可視なのは常に 1 つ。BasemapSwitcherControl で排他切替）
             {
                 id: 'osm-layer',
                 source: 'osm',
                 type: 'raster',
+                layout: { visibility: 'visible' },
+            },
+            {
+                id: 'gsi_std-layer',
+                source: 'gsi_std',
+                type: 'raster',
+                layout: { visibility: 'none' },
+            },
+            {
+                id: 'gsi_photo-layer',
+                source: 'gsi_photo',
+                type: 'raster',
+                layout: { visibility: 'none' },
+            },
+            {
+                id: 'gsi_blank-layer',
+                source: 'gsi_blank',
+                type: 'raster',
+                layout: { visibility: 'none' },
             },
             // 重ねるハザードマップここから
             {
@@ -368,6 +419,57 @@ const map = new maplibregl.Map({
 });
 
 /**
+ * 背景地図切替コントロール（MapLibre IControl 実装）
+ * 4 つの背景レイヤーをラジオで排他的に表示／非表示にする。
+ */
+class BasemapSwitcherControl {
+    // ラジオ選択肢（value は layer id、label は表示名）
+    static OPTIONS = [
+        { id: 'osm-layer', label: 'OSM' },
+        { id: 'gsi_std-layer', label: '地理院地図' },
+        { id: 'gsi_photo-layer', label: '航空写真' },
+        { id: 'gsi_blank-layer', label: '白地図' },
+    ];
+
+    onAdd(map) {
+        this._map = map;
+        const container = document.createElement('div');
+        container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+        container.id = 'basemap-switcher';
+
+        BasemapSwitcherControl.OPTIONS.forEach(({ id, label }) => {
+            const labelEl = document.createElement('label');
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'basemap-switcher';
+            input.value = id;
+            if (id === 'osm-layer') input.checked = true; // 初期表示は OSM
+            input.addEventListener('change', () => {
+                if (!input.checked) return;
+                BasemapSwitcherControl.OPTIONS.forEach((opt) => {
+                    this._map.setLayoutProperty(
+                        opt.id,
+                        'visibility',
+                        opt.id === id ? 'visible' : 'none',
+                    );
+                });
+            });
+            labelEl.appendChild(input);
+            labelEl.appendChild(document.createTextNode(` ${label}`));
+            container.appendChild(labelEl);
+        });
+
+        this._container = container;
+        return container;
+    }
+
+    onRemove() {
+        this._container.remove();
+        this._map = undefined;
+    }
+}
+
+/**
  * 現在選択されている指定緊急避難場所レイヤー(skhb)を特定しそのfilter条件を返す
  */
 const getCurrentSkhbLayerFilter = () => {
@@ -455,6 +557,9 @@ map.on('load', () => {
         },
     });
     map.addControl(opacitySkhb, 'top-right');
+
+    // 背景地図切替コントロール（左下）
+    map.addControl(new BasemapSwitcherControl(), 'bottom-left');
 
     // 地図上をクリックした際のイベント
     map.on('click', (e) => {
