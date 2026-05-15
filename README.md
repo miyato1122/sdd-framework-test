@@ -31,7 +31,7 @@ SDDフレームワークを検証するめのリポジトリです
     - 左下に独自 `IControl`（`BasemapSwitcherControl`）を配置し、ラジオで排他切替
     - 出典表示は MapLibre 標準 `AttributionControl` の自動集計に委ね、選択中の背景に応じて切り替わる
 3. 既存機能修正
-  - （検討中）
+  - オリジナル背景地図追加機能追加
 4. Nuxt構成への移行
 
 ## 検討結果
