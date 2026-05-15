@@ -55,3 +55,241 @@
     border: 0;
     background-image: linear-gradient(to bottom, #1253a4 0, #1253a4);
 }
+
+/* 背景地図切替コントロール（BasemapSwitcherControl）。
+ * MapLibre 標準の .maplibregl-ctrl-group カード見た目に合わせ、
+ * 内部パディングとラジオの行間のみ最小限に調整する。 */
+#basemap-switcher {
+    padding: 8px 10px;
+    max-width: 240px;
+    /* MapLibre 標準 .maplibregl-ctrl-group の overflow: hidden を打ち消し、
+     * 行内 ⋮ メニューのドロップダウンがカード外にはみ出して描画されるようにする。 */
+    overflow: visible;
+}
+#basemap-switcher .basemap-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    line-height: 1.6;
+}
+#basemap-switcher .basemap-row label {
+    flex: 1 1 auto;
+    min-width: 0;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#basemap-switcher input[type='radio'] {
+    margin-right: 5px;
+}
+#basemap-switcher .row-menu {
+    position: relative;
+    flex: 0 0 auto;
+}
+#basemap-switcher .row-menu-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 16px;
+    line-height: 1;
+    color: #555;
+}
+#basemap-switcher .row-menu-button:hover {
+    color: #000;
+}
+#basemap-switcher .row-menu-dropdown {
+    position: absolute;
+    /* 行の右端揃え。カード外（右側）にはみ出す形で展開する。
+     * カード内に収めたい場合は right: 0 のままで、overflow: visible により描画される。 */
+    left: 100%;
+    top: 0;
+    margin-left: 4px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    min-width: 90px;
+}
+#basemap-switcher .row-menu-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+#basemap-switcher .row-menu-dropdown button[data-action='edit'] {
+    color: #1253a4;
+}
+#basemap-switcher .row-menu-dropdown button[data-action='edit']:hover {
+    background: #e8f0fb;
+}
+#basemap-switcher .row-menu-dropdown button[data-action='delete'] {
+    color: #c0392b;
+}
+#basemap-switcher .row-menu-dropdown button[data-action='delete']:hover {
+    background: #fbe9e6;
+}
+#basemap-switcher .add-button {
+    margin-top: 6px;
+    width: 100%;
+    padding: 4px 6px;
+    background: #f8f8f8;
+    border: 1px dashed #aaa;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+#basemap-switcher .add-button:hover {
+    background: #efefef;
+}
+
+/* カスタム背景地図追加・編集フォームダイアログ */
+#custom-basemap-form-dialog {
+    border: none;
+    border-radius: 8px;
+    padding: 0;
+    min-width: 360px;
+    max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+#custom-basemap-form-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+}
+#custom-basemap-form {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+}
+#custom-basemap-form h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+}
+#custom-basemap-form .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+#custom-basemap-form label {
+    font-weight: 600;
+    font-size: 13px;
+}
+#custom-basemap-form .req {
+    color: #c00;
+    margin-left: 2px;
+}
+#custom-basemap-form input[type='text'] {
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font: inherit;
+}
+#custom-basemap-form input[readonly] {
+    background: #f3f3f3;
+    color: #777;
+}
+#custom-basemap-form .error {
+    margin: 0;
+    color: #c00;
+    font-size: 12px;
+}
+#custom-basemap-form details summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: #444;
+}
+#custom-basemap-form details[open] summary {
+    margin-bottom: 6px;
+}
+#custom-basemap-form details .field {
+    margin-top: 6px;
+}
+#custom-basemap-form .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+}
+#custom-basemap-form button {
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+}
+#custom-basemap-form button[data-role='submit'] {
+    background: #1253a4;
+    color: #fff;
+    border-color: #1253a4;
+}
+#custom-basemap-form button[data-role='submit']:hover {
+    background: #0e4083;
+}
+#custom-basemap-form button[data-role='cancel']:hover {
+    background: #f0f0f0;
+}
+
+/* カスタム背景地図削除確認ダイアログ。
+ * 追加・編集フォームと同じく <dialog> を showModal() で画面中央に表示する。 */
+#custom-basemap-delete-dialog {
+    border: none;
+    border-radius: 8px;
+    padding: 0;
+    min-width: 320px;
+    max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+#custom-basemap-delete-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+}
+#custom-basemap-delete-dialog .delete-dialog-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 14px;
+}
+#custom-basemap-delete-dialog h2 {
+    margin: 0;
+    font-size: 16px;
+}
+#custom-basemap-delete-dialog p {
+    margin: 0;
+    line-height: 1.5;
+    word-break: break-word;
+}
+#custom-basemap-delete-dialog .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+#custom-basemap-delete-dialog button {
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+}
+#custom-basemap-delete-dialog button[data-role='cancel']:hover {
+    background: #f0f0f0;
+}
+#custom-basemap-delete-dialog button[data-role='confirm'] {
+    background: #c0392b;
+    color: #fff;
+    border-color: #c0392b;
+}
+#custom-basemap-delete-dialog button[data-role='confirm']:hover {
+    background: #a93224;
+}

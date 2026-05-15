@@ -9,6 +9,77 @@
     </head>
     <body style="margin: 0">
         <div id="map" style="height: 100vh"></div>
+
+        <dialog id="custom-basemap-form-dialog">
+            <form id="custom-basemap-form" method="dialog" novalidate>
+                <h2 data-role="title">背景地図を追加</h2>
+
+                <div class="field">
+                    <label for="cbf-label">名称<span class="req">*</span></label>
+                    <input id="cbf-label" name="label" type="text" maxlength="40" />
+                    <p class="error" data-for="label" hidden></p>
+                </div>
+
+                <div class="field">
+                    <label for="cbf-tile-url">タイル URL<span class="req">*</span></label>
+                    <input
+                        id="cbf-tile-url"
+                        name="tileUrl"
+                        type="text"
+                        placeholder="https://example.com/{z}/{x}/{y}.png"
+                    />
+                    <p class="error" data-for="tileUrl" hidden></p>
+                </div>
+
+                <div class="field">
+                    <label for="cbf-attr-text">出典テキスト</label>
+                    <input id="cbf-attr-text" name="attributionText" type="text" maxlength="200" />
+                    <p class="error" data-for="attributionText" hidden></p>
+                </div>
+
+                <div class="field">
+                    <label for="cbf-attr-url">出典リンク URL</label>
+                    <input
+                        id="cbf-attr-url"
+                        name="attributionUrl"
+                        type="text"
+                        placeholder="https://example.com/copyright"
+                    />
+                    <p class="error" data-for="attributionUrl" hidden></p>
+                </div>
+
+                <details data-role="advanced">
+                    <summary>詳細設定（任意）</summary>
+                    <div class="field">
+                        <label for="cbf-minzoom">minzoom</label>
+                        <input id="cbf-minzoom" name="minzoom" type="text" inputmode="numeric" />
+                        <p class="error" data-for="minzoom" hidden></p>
+                    </div>
+                    <div class="field">
+                        <label for="cbf-maxzoom">maxzoom</label>
+                        <input id="cbf-maxzoom" name="maxzoom" type="text" inputmode="numeric" />
+                        <p class="error" data-for="maxzoom" hidden></p>
+                    </div>
+                </details>
+
+                <div class="actions">
+                    <button type="button" data-role="cancel">キャンセル</button>
+                    <button type="submit" data-role="submit">追加</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog id="custom-basemap-delete-dialog">
+            <div class="delete-dialog-body">
+                <h2>カスタム背景地図の削除</h2>
+                <p data-role="message">この背景地図を削除します。よろしいですか？</p>
+                <div class="actions">
+                    <button type="button" data-role="cancel">キャンセル</button>
+                    <button type="button" data-role="confirm">削除</button>
+                </div>
+            </div>
+        </dialog>
+
         <script type="module" src="./main.js"></script>
         <script>
             // PWA: ServiceWorker読み込み
