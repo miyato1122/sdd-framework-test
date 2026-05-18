@@ -28,3 +28,134 @@
 .map-error-toast[hidden] {
     display: none;
 }
+
+/*
+ * 背景地図スイッチャー（自作 IControl）の追加ボタン・追加フォーム。
+ * コンテナは既存 #opacity-control を流用（opacity-control.css）。ここでは
+ * 002 から増えた「追加」アフォーダンスとフォームのみを共有スタイルとして
+ * 集約する（インライン禁止＝憲章 III）。bottom-left 限定で他コントロール非干渉。
+ *
+ * 重要: コントロール枠は .maplibregl-ctrl-group を付与しており、maplibre-gl.css
+ * の `.maplibregl-ctrl-group button {width:29px;height:29px;background:transparent}`
+ * および `…button:not(:disabled):hover{background:rgba(0,0,0,.05)}` が <button>
+ * を 29px 角・ほぼ透明ホバーに潰す。これを確実に上書きするため、既存
+ * opacity-control.css と同じ #opacity-control（id）スコープに詳細度を上げ、
+ * MapLibre 既定（width/height/background/box-shadow/border 等）を明示的にリセット
+ * してから本来の見た目・可視ホバーを定義する。
+ */
+/*
+ * 横幅の余裕: 共有 opacity-control.css の #opacity-control は padding 右=0 で
+ * 内容が枠右端に密着する。共有 CSS はハザード(top-left)/skhb(top-right) と
+ * 共用のため変更せず（FR-011 非回帰）、bottom-left＝本スイッチャーのみに
+ * 右余白と最小幅を後勝ちで付与する（style.css は opacity-control.css より
+ * 後に import されるため同詳細度でも上書き）。
+ */
+.maplibregl-ctrl-bottom-left #opacity-control {
+    padding-right: 12px;
+    min-width: 200px;
+}
+
+#opacity-control .basemap-switcher-list > div {
+    white-space: nowrap;
+}
+
+/* MapLibre 既定（.maplibregl-ctrl-group button）の打ち消し＋共通リセット */
+#opacity-control .basemap-add-button,
+#opacity-control .basemap-add-actions button {
+    width: auto;
+    height: auto;
+    box-sizing: border-box;
+    display: inline-block;
+    box-shadow: none;
+    font: inherit;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+#opacity-control .basemap-add-button {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 5px 8px;
+    border: 1px solid #1253a4;
+    border-radius: 4px;
+    background: #fff;
+    color: #1253a4;
+    font-size: 13px;
+    text-align: center;
+}
+#opacity-control .basemap-add-button:not(:disabled):hover {
+    background: #1253a4;
+    color: #fff;
+}
+#opacity-control .basemap-add-button:focus-visible,
+#opacity-control .basemap-add-form button:focus-visible {
+    outline: 2px solid #1253a4;
+    outline-offset: 1px;
+}
+
+#opacity-control .basemap-add-form {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #ddd;
+}
+#opacity-control .basemap-add-form[hidden] {
+    display: none;
+}
+#opacity-control .basemap-add-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+#opacity-control .basemap-add-field label {
+    font-size: 12px;
+    margin-bottom: 2px;
+    cursor: default;
+}
+#opacity-control .basemap-add-field input {
+    width: 220px;
+    max-width: 60vw;
+    padding: 3px 4px;
+    font-size: 12px;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+}
+#opacity-control .basemap-add-field input[aria-invalid='true'] {
+    border-color: #c0392b;
+}
+#opacity-control .basemap-add-error {
+    margin: 2px 0 0;
+    color: #c0392b;
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: normal;
+}
+#opacity-control .basemap-add-error[hidden] {
+    display: none;
+}
+#opacity-control .basemap-add-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+#opacity-control .basemap-add-actions button {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+#opacity-control .basemap-add-submit {
+    border: 1px solid #1253a4;
+    background: #1253a4;
+    color: #fff;
+}
+#opacity-control .basemap-add-submit:not(:disabled):hover {
+    background: #0e4080;
+}
+#opacity-control .basemap-add-cancel {
+    border: 1px solid #aaa;
+    background: #fff;
+    color: #333;
+}
+#opacity-control .basemap-add-cancel:not(:disabled):hover {
+    background: #ebebeb;
+}

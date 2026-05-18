@@ -18,7 +18,10 @@ import { pickNearestFeature } from './nearest.js';
 import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 
 // 背景地図レジストリ（純粋モジュール。新規依存なし＝利用者制約・憲章 I）
-import { BASEMAPS, buildBaseLayers } from './basemaps.js';
+import { BASEMAPS, getDefaultBasemapId } from './basemaps.js';
+// 背景地図スイッチャー（自作 IControl。OpacityControl は実行時追加・末尾追加
+// ボタン非対応のため置換。research R1′。新規依存なし）
+import BasemapSwitcherControl from './basemap-switcher.js';
 
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
@@ -469,11 +472,33 @@ map.on('load', () => {
         );
     }
 
-    // 背景地図切替コントロール（既存 OpacityControl を転用、地図左下に配置）。
-    // baseLayers は排他（ラジオ）切替＝現在選択の表示。osm-layer が既定可視のため
-    // 初期選択は OSM になる（FR-001/002/003/004/008、research R1/R3）。
-    const basemapSwitcher = new OpacityControl({
-        baseLayers: buildBaseLayers(),
+    // 背景地図切替コントロール（自作 IControl、地図左下に配置）。組み込み4種を
+    // 排他ラジオで切替＋一覧末尾の「追加」からユーザー定義背景を実行時追加できる。
+    // 初期選択は osm-layer が既定可視のため OSM（FR-001/002/004/005/007、R1′）。
+    // 追加確定時のみ呼ばれるコールバックで source/layer を登録（visibility:'none'、
+    // osm-layer 直後・ハザード背面＝002 の GSI 追加と同配置）。出典は 002 R3 の
+    // 既定 AttributionControl 自動集約をそのまま再利用（追加コード不要、FR-006）。
+    const onAddBasemap = (basemap) => {
+        if (!map.getSource(basemap.sourceId)) {
+            map.addSource(basemap.sourceId, basemap.source);
+        }
+        const layerId = `${basemap.id}-layer`;
+        if (!map.getLayer(layerId)) {
+            map.addLayer(
+                {
+                    id: layerId,
+                    source: basemap.sourceId,
+                    type: 'raster',
+                    layout: { visibility: 'none' },
+                },
+                'hazard_flood-layer',
+            );
+        }
+    };
+    const basemapSwitcher = new BasemapSwitcherControl({
+        basemaps: BASEMAPS,
+        defaultId: getDefaultBasemapId(),
+        onAddBasemap,
     });
     map.addControl(basemapSwitcher, 'bottom-left');
 
