@@ -8,12 +8,17 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 //  同梱した opacity-control.css を読み込む。FR-005 の破壊的変更追従）
 import OpacityControl from 'maplibre-gl-opacity';
 import './opacity-control.css';
+// アプリ共有スタイル（インライン禁止＝憲章 III。エラー通知等のクラスを集約）
+import './style.css';
 
 // 最寄り地物選定の純粋ロジック（@turf/distance v7 は named export のため nearest.js 側で取り込む）
 import { pickNearestFeature } from './nearest.js';
 
 // 地理院標高タイルをMapLibre GL JSで利用するためのモジュール
 import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
+
+// 背景地図レジストリ（純粋モジュール。新規依存なし＝利用者制約・憲章 I）
+import { BASEMAPS, buildBaseLayers } from './basemaps.js';
 
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
@@ -131,6 +136,9 @@ const map = new maplibregl.Map({
                 id: 'osm-layer',
                 source: 'osm',
                 type: 'raster',
+                // 既定背景（basemaps.js の getDefaultBasemapId='osm' と一致）。
+                // 背景スイッチャー（OpacityControl baseLayers）の初期選択になる。
+                layout: { visibility: 'visible' },
             },
             // 重ねるハザードマップここから
             {
@@ -415,8 +423,60 @@ geolocationControl.on('trackuserlocationend', () => {
     userLocation = null;
 });
 
+// タイル/データ取得失敗を無言にしないための非ブロッキング通知（FR-010・憲章 III）。
+// 全画面ブロックやレイアウト破壊をせず、地図のズーム/パン操作は継続できる。
+const errorToast = document.createElement('div');
+errorToast.className = 'map-error-toast';
+errorToast.setAttribute('role', 'status'); // 支援技術へ通知（aria-live=polite）
+errorToast.setAttribute('aria-live', 'polite');
+errorToast.hidden = true;
+document.body.appendChild(errorToast);
+
+let errorToastTimer = null;
+const showMapErrorNotice = () => {
+    errorToast.textContent =
+        '地図データの取得に一部失敗しました。地図の操作はそのまま続けられます。';
+    errorToast.hidden = false;
+    if (errorToastTimer !== null) clearTimeout(errorToastTimer);
+    // 連続するタイルエラーは1つの通知に集約し、数秒で自動的に消す
+    errorToastTimer = setTimeout(() => {
+        errorToast.hidden = true;
+        errorToastTimer = null;
+    }, 5000);
+};
+
+// タイル/ソース取得失敗を捕捉（地図は操作継続・背景選択状態は不変）
+map.on('error', () => {
+    showMapErrorNotice();
+});
+
 // マップの初期ロード完了時に発火するイベントを定義
 map.on('load', () => {
+    // 背景地図（GSI 3種）のソース/レイヤーを追加（osm は初期スタイルに既存）。
+    // OpacityControl の baseLayers で排他切替するため visibility:'none' で起動し、
+    // osm-layer の直後（ハザード群の手前）に挿入して背景レイヤー群を構成する。
+    for (const basemap of BASEMAPS) {
+        if (basemap.sourceId === 'osm') continue; // osm は初期スタイルで定義済み
+        map.addSource(basemap.sourceId, basemap.source);
+        map.addLayer(
+            {
+                id: `${basemap.id}-layer`,
+                source: basemap.sourceId,
+                type: 'raster',
+                layout: { visibility: 'none' },
+            },
+            'hazard_flood-layer', // この手前に追加＝osm-layer の直後・ハザードの背面
+        );
+    }
+
+    // 背景地図切替コントロール（既存 OpacityControl を転用、地図左下に配置）。
+    // baseLayers は排他（ラジオ）切替＝現在選択の表示。osm-layer が既定可視のため
+    // 初期選択は OSM になる（FR-001/002/003/004/008、research R1/R3）。
+    const basemapSwitcher = new OpacityControl({
+        baseLayers: buildBaseLayers(),
+    });
+    map.addControl(basemapSwitcher, 'bottom-left');
+
     // 背景地図・重ねるタイル地図のコントロール
     const opacity = new OpacityControl({
         baseLayers: {

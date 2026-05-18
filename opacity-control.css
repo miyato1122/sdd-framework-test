@@ -53,11 +53,28 @@
 
 /*
  * アプリ固有の調整:
- * 本アプリの 2 つの OpacityControl はいずれも baseLayers のみ使用するため、
+ * 本アプリの 3 つの OpacityControl はいずれも baseLayers のみ使用するため、
  * コントロールが描画する区切り <hr> が末尾に空で残り「不要な下線」に見える。
  * ユーザー要望によりこの末尾線を非表示にする（pre-upgrade の意図した
  * 見た目に対する小さなアプリ側調整。区切り線が必要になれば本ルールを外す）。
  */
 #opacity-control hr {
     display: none;
+}
+
+/*
+ * 背景地図スイッチャー（bottom-left に配置した OpacityControl）固有の調整。
+ * 既定の width:150px だと「地理院地図（標準地図）」等のラベルが折り返すため、
+ * この instance のみ幅を内容に合わせ、ラベルの折り返しを禁止する。
+ * セレクタを .maplibregl-ctrl-bottom-left 配下に限定し、ハザード(top-left)・
+ * skhb(top-right) の 2 コントロールには影響させない。
+ * label には maplibre-gl-opacity が for(htmlFor) を付与済みのため、
+ * ラベルクリックで対応ラジオが切り替わる（cursor:pointer でクリック可を明示）。
+ */
+.maplibregl-ctrl-bottom-left #opacity-control {
+    width: auto;
+    white-space: nowrap;
+}
+.maplibregl-ctrl-bottom-left #opacity-control label {
+    cursor: pointer;
 }

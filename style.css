@@ -1,0 +1,30 @@
+/*
+ * アプリ共有スタイル。
+ * 憲章 III に従い、場当たりのインラインスタイルではなくここへ集約する。
+ */
+
+/*
+ * 地図データ取得失敗の非ブロッキング通知（FR-010・憲章 III）。
+ * 画面上部中央に控えめに表示し、数秒で自動的に消える。
+ * pointer-events:none によりズーム/パン等の地図操作を一切妨げない。
+ */
+.map-error-toast {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 90vw;
+    z-index: 10;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: rgba(33, 33, 33, 0.92);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+.map-error-toast[hidden] {
+    display: none;
+}
