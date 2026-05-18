@@ -1,50 +1,169 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT / 同期影響レポート
+=====================================
+Version change: 1.0.0 → 1.1.0
+Bump rationale (MINOR): 新たな規範的制約「すべての SDD 成果物を日本語で作成する」を
+                        追加したため MINOR。あわせて憲章本文を日本語へ全面改訂
+                        （言語変更自体は非意味的＝ PATCH 相当）。原則の削除・
+                        後方非互換な再定義はないため MAJOR ではない。
+
+Modified principles (内容は同等、日本語へ改訂):
+  - I. Code Quality                → I. コード品質
+  - II. Testing Standards          → II. テスト基準
+  - III. User Experience Consistency → III. UX 一貫性
+  - IV. Performance Requirements    → IV. パフォーマンス要件
+
+Added sections:
+  - 「成果物の言語」制約（技術・アーキテクチャ制約および開発ワークフロー内）
+    すべての憲章・仕様・計画・タスク等の成果物を日本語で記述することを必須化
+
+Removed sections: なし
+
+Templates requiring updates:
+  - .specify/templates/plan-template.md        ✅ aligned（構造は汎用プレース
+                                                  ホルダー。記入内容は日本語で
+                                                  作成する運用ルールを適用）
+  - .specify/templates/spec-template.md        ✅ aligned（同上）
+  - .specify/templates/tasks-template.md       ✅ aligned（同上）
+  - .specify/templates/checklist-template.md   ✅ aligned（同上）
+  注: テンプレートは英語の骨組みのまま据え置き。各機能で生成される成果物の
+      本文を日本語で作成する運用とし、テンプレートファイル自体の改変は不要。
+
+Follow-up TODOs: なし — 未解決のプレースホルダーは存在しない。
+
+Note: 末尾のメタデータ行（Version / Ratified / Last Amended）はツール互換性の
+      ため英語キーのまま保持。本文・原則・統治規定はすべて日本語。
+-->
+
+# sdd-framework-test 憲章
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. コード品質
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+コードは可読で、モジュール化され、不要な複雑性を排したものでなければならない（MUST）。
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- ソースは責務が単一で命名可能な ES モジュールとして構成すること（MUST）。
+  「雑多」「なんでも入れ」モジュールを作ってはならない（MUST NOT）。
+- マージ前に Lint とフォーマットを通過させること（MUST）。スタイルはレビュー
+  担当者の主観ではなくツールで強制する。
+- デッドコード、コメントアウトされたコードブロック、デバッグ用 `console` は
+  main ブランチにコミットしてはならない（MUST NOT）。
+- 関数は一目で理解できる大きさに保ち、実装ではなく意図で命名すること（MUST）。
+- 依存関係を追加する場合は PR 内で必要性を説明すること（MUST）。新規依存より
+  プラットフォーム標準および既存依存を優先する。
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**根拠**: 本リポジトリは SDD フレームワークを評価するための教材・サンプルコード
+であり、主たる成果は「明瞭さ」である。読めないコードは比較検証を無効化する。
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. テスト基準
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+挙動上重要なロジックは自動テストで保護し、ビルドを常にグリーンに保つこと（MUST）。
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- 純粋ロジック（距離・地理計算、レイヤー／状態の選択、設定の導出）には自動
+  ユニットテストを用意すること（MUST）。
+- すべてのバグ修正には、修正前に失敗し修正後に成功する回帰テストを追加する
+  こと（MUST）。
+- `npm run build` の成功を必須の品質ゲートとする（MUST）。ビルド失敗は変更の
+  失敗とみなす。
+- ユニットテストできない地図描画経路には、リリース前に実施する手動スモーク
+  確認を文書化すること（MUST）：地図が表示される／背景レイヤーが切り替わる／
+  コンソールエラーが出ない。
+- テストは決定論的であること（MUST）。ユニットテストで実ネットワークのタイル
+  に依存してはならない（外部の地図・データソースはモック／スタブする）。
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**根拠**: SDD フレームワーク評価は「変更が検証可能であること」に依存する。
+テストのない変更はフレームワーク間の客観的比較を不可能にする。
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. UX 一貫性
+
+地図アプリケーションは一貫した予測可能なインターフェースを提供しなければ
+ならない（MUST）。
+
+- UI コントロールは MapLibre のコントロール慣習（配置・サイズ・操作）に従い、
+  場当たり的なインラインスタイルではなく `style.css` の共有スタイルを再利用
+  すること（MUST）。
+- すべての対話的機能は、読み込み中・空・エラーの各状態を視覚的に処理する
+  こと（MUST）。失敗が地図を無言で壊した状態にしてはならない（MUST NOT）。
+- 背景レイヤーや地形の切り替え中も地図は操作可能であり続けること（MUST）。
+  全画面ブロックや制御不能なレイアウトシフトを起こしてはならない（MUST NOT）。
+- コントロールはキーボードで到達可能であり、可読なコントラストを満たすこと
+  （MUST）。新規 UI は既存 UI のアクセシビリティを後退させてはならない
+  （MUST NOT）。
+- 等価な操作はアプリ全体で同じ挙動（一貫したアフォーダンス・ラベル・
+  フィードバック）であること（MUST）。
+
+**根拠**: 一貫性こそ利用者・評価者が実際に知覚するもの。不整合な UX は
+フレームワークが一貫した成果を出したかどうかを覆い隠す。
+
+### IV. パフォーマンス要件
+
+アプリケーションは一般的なブロードバンドのデスクトップ環境で応答性を維持
+しなければならない（MUST）。
+
+- 初回読み込みから 3 秒以内に地図が操作可能になること（MUST）。
+- パン／ズームは 60fps を目標とし（MUST）、通常利用中にメインスレッドを
+  100ms を超えてブロックするタスクがあってはならない（MUST NOT）。
+- 本番 JS バンドルは合意された予算内に収めること（MUST）。重い／任意の資産
+  （地形、大規模データ）は遅延読み込みすること（MUST）。
+- 冗長なタイル／データ要求および不要な再描画を避けること（MUST）。
+  キャッシュ可能な結果はキャッシュすること（MUST）。
+- 明示されたパフォーマンス目標を後退させる変更は、PR で根拠を明示するか
+  （MUST）、さもなければ却下する。
+
+**根拠**: 地図アプリは滑らかさで評価される。パフォーマンス後退は最も目立つ
+失敗様態であり、明示的に統治する必要がある。
+
+## Technology & Architecture Constraints
+
+- ビルドツール: Vite。ビルドコマンドは `npm run build`（相対デプロイ用に
+  `--base=./` を設定）、ローカル開発は `npm run dev`。
+- アプリケーションコード: バニラ JavaScript の ES モジュールと MapLibre GL JS
+  およびそのプラグイン（`maplibre-gl-opacity`、`maplibre-gl-gsi-terrain`）、
+  `@turf/distance`。フレームワーク導入（例: Nuxt 移行）は明示的な
+  アーキテクチャ決定であり、仕様ワークフローを経て計画すること（MUST）。
+- ランタイム: Node.js `^20.19.0 || >=22.12.0`。README と本制約を更新せずに
+  最低ランタイムを暗黙に引き上げてはならない（MUST NOT）。
+- 依存関係はコミット済み `package-lock.json` により再現可能に保つこと（MUST）。
+- **成果物の言語**: 憲章・仕様（spec）・計画（plan）・タスク（tasks）・
+  チェックリスト・レビューコメント等、本リポジトリで生成するすべての SDD
+  成果物は日本語で作成すること（MUST）。コード識別子・コマンド・外部 API 名
+  など技術的に英語が必須の要素はこの限りでない。説明・根拠・受け入れ基準
+  などの散文は日本語で記述する。
+
+## Development Workflow & Quality Gates
+
+- 作業は仕様駆動フローに従う: constitution → specify →（clarify）→ plan →
+  tasks → implement。`.specify/` のテンプレートとコマンドを用いる。
+- すべての変更は、マージ前に以下のゲートを順番に通過すること（MUST）:
+  1. Lint／フォーマットがクリーン
+  2. `npm run build` が成功
+  3. 必須の自動テストが成功
+  4. 計画の Constitution Check に未正当化の違反がない
+- プルリクエストはレビューを受けること（MUST）。レビュー担当者は機能的
+  正しさだけでなく上記ゲートと原則準拠を検証する。
+- コミットは SDD フレームワーク比較が成果を特定の変更に帰属できるよう、
+  スコープを絞り記述すること（SHOULD）。
+- 上記すべての成果物（spec/plan/tasks/レビュー記述等）は日本語で作成する
+  こと（MUST、本憲章「成果物の言語」制約に従う）。
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+本憲章は本リポジトリの他の開発慣行に優先する。慣行が本憲章の原則と矛盾する
+場合、憲章が改正されるまで原則が優先する。
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **改正手続き**: 変更内容・根拠・`.specify/` テンプレートおよびドキュメントへの
+  移行／伝播影響を記載した PR で提案すること（MUST）。改正はマージ時点で発効
+  する。提案・改正記述も日本語で行う（MUST）。
+- **バージョニング方針**（本ドキュメントのセマンティックバージョニング）:
+  - MAJOR: 原則の削除、または後方非互換な再定義、もしくは統治の重大な再構成。
+  - MINOR: 新しい原則・節の追加、または指針の重大な拡張。
+  - PATCH: 明確化・字句修正・非意味的な調整。
+- **準拠レビュー**: 各計画は Constitution Check を完了すること（MUST）。違反が
+  ある場合は計画の Complexity Tracking に根拠を記録するか、変更を是正する
+  こと（MUST）。正当化できない違反はマージをブロックする。
+- **ランタイム指針**: エージェントおよび貢献者向けのランタイム指針は
+  `CLAUDE.md` と現行計画に置く。これらの文書は本憲章と矛盾してはならない
+  （MUST NOT）。
+
+**Version**: 1.1.0 | **Ratified**: 2026-05-18 | **Last Amended**: 2026-05-18
