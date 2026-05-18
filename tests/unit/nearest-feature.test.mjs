@@ -1,9 +1,9 @@
 // 最寄り地物選定ロジック（nearest.js）の回帰テスト。
-// @turf/distance v7（named export）で従来と同一の選定結果になることを保証する。
+// @turf/distance v7（default export）で従来と同一の選定結果になることを保証する。
 // 実行: `npm test`（= node --test）
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distance } from '@turf/distance';
+import distance from '@turf/distance';
 import { pickNearestFeature } from '../../nearest.js';
 
 // 固定の地物（東京駅周辺を基準に距離が明確に異なるよう配置）

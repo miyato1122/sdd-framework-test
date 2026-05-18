@@ -1,5 +1,6 @@
 // 最寄り地物選定の純粋ロジック（地図インスタンスに依存しない＝ユニットテスト対象）
-import { distance } from '@turf/distance';
+// @turf/distance v7 は default export（named `distance` は存在しない）。
+import distance from '@turf/distance';
 
 /**
  * 指定地点に最も近い地物を返す純粋関数。
