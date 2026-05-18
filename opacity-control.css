@@ -1,0 +1,63 @@
+/*
+ * maplibre-gl-opacity のスタイル（ローカル同梱）
+ *
+ * 1.8.0 は package.json の exports を "." のみに再編し、CSS サブパス
+ * (旧 'maplibre-gl-opacity/dist/maplibre-gl-opacity.css') を公開しなくなった。
+ * そのため import で取り込めず、コントロールが素のスタイル（文字詰まり・
+ * 既定 hr の長い線）で表示されていた。アップグレード前と同一の見た目に
+ * 戻すため、1.8.0 同梱の build/maplibre-gl-opacity.css の内容をそのまま
+ * ここに取り込む（FR-005: 破壊的変更箇所のコード追従で機能等価を維持）。
+ */
+#opacity-control {
+    width: 150px;
+    padding: 10px 0 10px 10px;
+}
+#opacity-control hr {
+    margin: 5px 10px 5px 0;
+}
+#opacity-control input[type='checkbox'],
+#opacity-control input[type='radio'] {
+    margin-right: 5px;
+}
+#opacity-control input[type='range'] {
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+    width: 125px;
+    height: 10px;
+    margin: 0;
+    border: none;
+    padding: 1px 2px;
+    border-radius: 30px;
+    background: #f1f0ee;
+    outline: none;
+}
+#opacity-control input[type='range']::-ms-track {
+    border: inherit;
+    color: transparent;
+    background: transparent;
+}
+#opacity-control input[type='range']::-ms-fill-lower,
+#opacity-control input[type='range']::-ms-fill-upper {
+    background: transparent;
+}
+#opacity-control input[type='range']::-ms-tooltip {
+    display: none;
+}
+#opacity-control input[type='range']::-ms-thumb {
+    width: 15px;
+    height: 18px;
+    border-radius: 12px;
+    border: 0;
+    background-image: linear-gradient(to bottom, #1253a4 0, #1253a4 100%);
+}
+
+/*
+ * アプリ固有の調整:
+ * 本アプリの 2 つの OpacityControl はいずれも baseLayers のみ使用するため、
+ * コントロールが描画する区切り <hr> が末尾に空で残り「不要な下線」に見える。
+ * ユーザー要望によりこの末尾線を非表示にする（pre-upgrade の意図した
+ * 見た目に対する小さなアプリ側調整。区切り線が必要になれば本ルールを外す）。
+ */
+#opacity-control hr {
+    display: none;
+}

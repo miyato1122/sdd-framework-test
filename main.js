@@ -3,11 +3,14 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 // OpacityControlプラグインの読み込み
+// （maplibre-gl-opacity 1.8.0 は exports を "." のみに再編し CSS サブパスを廃止。
+//  パッケージから CSS を import できないため、1.8.0 同梱 CSS をローカルに
+//  同梱した opacity-control.css を読み込む。FR-005 の破壊的変更追従）
 import OpacityControl from 'maplibre-gl-opacity';
-import 'maplibre-gl-opacity/dist/maplibre-gl-opacity.css';
+import './opacity-control.css';
 
-// 地点間の距離を計算するモジュール
-import distance from '@turf/distance';
+// 最寄り地物選定の純粋ロジック（@turf/distance v7 は named export のため nearest.js 側で取り込む）
+import { pickNearestFeature } from './nearest.js';
 
 // 地理院標高タイルをMapLibre GL JSで利用するためのモジュール
 import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
@@ -392,24 +395,8 @@ const getNearestFeature = (longitude, latitude) => {
         filter: currentSkhbLayerFilter,
     });
 
-    // 現在地に最も近い地物を見つける
-    const nearestFeature = features.reduce((minDistFeature, feature) => {
-        const dist = distance(
-            [longitude, latitude],
-            feature.geometry.coordinates,
-        );
-        if (minDistFeature === null || minDistFeature.properties.dist > dist)
-            return {
-                ...feature,
-                properties: {
-                    ...feature.properties,
-                    dist,
-                },
-            };
-        return minDistFeature;
-    }, null);
-
-    return nearestFeature;
+    // 現在地に最も近い地物を見つける（純粋ロジックは nearest.js に分離）
+    return pickNearestFeature([longitude, latitude], features);
 };
 
 let userLocation = null; // ユーザーの最新の現在地を保存する変数
@@ -422,6 +409,10 @@ map.addControl(geolocationControl, 'bottom-right');
 geolocationControl.on('geolocate', (e) => {
     // 位置情報が更新されるたびに発火・userLocationを更新
     userLocation = [e.coords.longitude, e.coords.latitude];
+});
+geolocationControl.on('trackuserlocationend', () => {
+    // 現在地追跡がオフになったら現在位置を消去する（公開イベントで内部状態に依存しない）
+    userLocation = null;
 });
 
 // マップの初期ロード完了時に発火するイベントを定義
@@ -541,8 +532,7 @@ map.on('load', () => {
 
     // 地図画面が描画される毎フレームごとに、ユーザー現在地と最寄りの避難施設の線分を描画する
     map.on('render', () => {
-        // GeolocationControlがオフなら現在位置を消去する
-        if (geolocationControl._watchState === 'OFF') userLocation = null;
+        // 現在地の消去は trackuserlocationend イベント（公開 API）で処理する
 
         // ズームが一定値以下または現在地が計算されていない場合はラインを消去する
         if (map.getZoom() < 7 || userLocation === null) {
@@ -565,7 +555,7 @@ map.on('load', () => {
                 type: 'LineString',
                 coordinates: [
                     userLocation,
-                    nearestFeature._geometry.coordinates,
+                    nearestFeature.geometry.coordinates,
                 ],
             },
         };
