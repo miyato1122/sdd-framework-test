@@ -53,7 +53,7 @@
   - _Depends: 1.2, 2.1, 3.1_
 
 - [ ] 5. Validation: 二段検証
-- [ ] 5.1 クリーン環境健全性の確認
+- [x] 5.1 クリーン環境健全性の確認
   - lockfile 再現環境で `npm run build` / `npm run dev` / `npm run preview` を実行し、いずれも成功することを確認する（build グリーン単独を合格としない・偽 green 回避）
   - 観測可能な完了: 3 コマンドの成功ログが取得され、クリーン環境で再現できる
   - _Depends: 4.1_
@@ -66,6 +66,7 @@
   - _Depends: 5.1, 3.2_
 
 ## Implementation Notes
+- 5.1: 当 Windows 環境で `npm ci` は `@rolldown/binding-win32-x64-msvc/...node` の OS 書込拒否（既知特性）で失敗する。クリーン環境再現は `npm install`（lockfile 整合・全消去回避）を正準とする＝偽 green ではなく特性起因の限定を明示。検証実績: install EXIT0/脆弱性0、build EXIT0、preview/dev とも HTTP 200（map div＋script 配信）。dev/preview はバックグラウンド起動→node fetch で 200 確認→port 5173/4175 を taskkill 停止（背景タスクの "failed exit1" は taskkill の結果＝サーバ自体は起動成功）。最終検証（kiro-validate-impl）もこの方針。
 - 2.1: main.js のブロックコメント／JSDoc 内に `hazard_*/skhb` のような **`*/` リテラルを書かない**（コメントが早期クローズしビルド構文エラー）。`hazard_ 各種` 等に言い換える。後続 3.1/4.1 の日本語コメント追記時も注意。`setBasemap` は hoisted 宣言で後方の `const map` を参照するが、呼出は実行時（3.1/4.1）のみで TDZ 非該当。
 - 環境: subagent 追加利用枠が断続的に枯渇（リセット 17:20 Asia/Tokyo）。枯渇時は reviewer-prompt 許可のフォールバックでメインコンテキストにて kiro-review 手順を完全適用してレビューする（チェックを弱めない）。
 - dist 方針: `npm run build` 実行で `dist/*` が再生成され git diff に出るが、これは検証生成物。per-task コミットには **source＋tasks.md のみ**ステージし `dist/*` は含めない（最終検証時にまとめて再生成・反映を判断）。
