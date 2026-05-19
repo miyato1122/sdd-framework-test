@@ -314,3 +314,21 @@ steering / project memory に「Windows では npm install / git ref 操作が `
 - **特定した原因規則（ビルド済みバンドル）**: `dist/assets/index-BvMiK_QV.css` 内、`maplibre-gl-opacity@1.8.0` 同梱 CSS 由来の唯一の `hr` 規則 `#opacity-control hr{margin:5px 10px 5px 0}`。border リセットを持たないため、OpacityControl が描画する末尾 `<hr>`（baseLayers のみ構成時、ラジオ群直後＝パネル下端に位置）が **ブラウザ既定の `hr` ボーダー**で描画され、下線として可視化される。更新前 1.4.0 では本下線が出ていなかった（Task 1.3 ベースライン・利用者確認）＝アップグレード起因（R3.2/R4.4 パリティ違反）。
 - **適用した override（最小・限定）**: 追跡対象の空ファイル `style.css` に `#opacity-control hr { border:0; border-top:0; height:0; background:transparent; }` を追加し、`main.js` の `maplibre-gl-opacity` CSS import（:7）**直後**に `import './style.css';` を 1 行追加（カスケード順を後勝ちにするため）。同一詳細度かつ後置のため `!important` 不要。margin（レイアウト間隔）・ウィジェット機能は変更せず、下線描画のみを無効化する最小調整。
 - **再検証ループ**: 設計 Implementation Notes（Integration）に従い、本 override 適用後にクリーン環境ビルド（`vite build --base=./`）を再実行し、リビルドされた `dist/assets/index-*.css` に override が含まれることを確認する。**実機での視覚回復（下線が消えパネルが更新前と一致）の最終目視確認は利用者が実施**（要件 4.2）。コード側は最終視覚確認を行わず、利用者の再目視を経て Task 4.3 の最終合否判定に進む（偽 green 排除）。
+
+## (c) 置換後 利用者再目視結果（post-Adjust 再検証エビデンス）
+
+- **再目視日**: 2026-05-19（commit `b29d131` の修正適用ビルド）
+- **検証方法**: 利用者が修正版アプリをブラウザで起動し `#opacity-control` パネルを再確認（要件 4.2）。
+- **結果（利用者報告）**: **OK** — 下線が消失し、パネルは更新前（1.4.0）と同等の見た目。過剰抑止による余白・区切りの不自然さや新規の視覚崩れは無し。**R3.2 / R4.4 の視覚パリティ回復を確認**。
+- 本結果が design 再検証ループの「置換後（post-Adjust）エビデンス」であり、Task 4.3 の最終合否判定はこれを用いる（置換前エビデンスは使用しない）。
+
+# 最終合格判定記録 (Task 4.3)
+
+- **判定日**: 2026-05-19
+- **対象**: 更新後・パリティ修正適用版（依存: vite 8.0.13 / maplibre-gl 5.24.0 / @turf/distance 7.3.5 / maplibre-gl-opacity 1.8.0 / maplibre-gl-gsi-terrain 2.3.2。修正: `main.js:7` CSS import 解決、`style.css`+import で opacity 下線抑止。commit `b29d131`）。
+- **合格条件（要件 4.1）**: 最新のクリーン環境 build/起動成立（Task 3.1）∧ 最新の実機スモーク全項目 pass（Task 4.1）。ビルド単独では合格としない。
+- **エビデンス（すべて 4.2 置換後 = post-Adjust。置換前エビデンス不使用＝design 準拠）**:
+  - クリーン環境ビルド: `npm run build`（vite 8.0.13）成功、独立レビュアーが置換後に再実行して PASS を確認（Task 4.2 レビュー）。dev/preview liveness（HTTP 200）成立（Task 3.1）。ブラウザコンソールエラー無し・初期地図表示は利用者実機確認で問題なし（Task 4.1）。
+  - 実機スモーク（利用者目視・要件 4.2）: 機能 R3.1〜3.8 全 pass（Task 4.1、連動集合 3.4/3.6/3.7 含む）。検出された唯一の更新起因 視覚リグレッション（R3.2 opacity 下線）は (c) で回復し、置換後 利用者再目視で消失・パリティ回復を確認（上記）。
+  - 残存 利用者可視リグレッション: **なし**（要件 4.4 充足）。
+- **判定**: **合格（GO）**。クリーン環境 build/起動成立 ∧ 実機スモーク全項目 pass を post-Adjust エビデンスで満たす。ビルド単独ではなく実機スモーク双方の通過による合格（偽 green 排除）。
