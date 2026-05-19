@@ -30,7 +30,8 @@
  *
  * Why: Task 3.1 builds the control as
  *   div.maplibregl-ctrl.maplibregl-ctrl-group.basemap-switcher
- *     > fieldset > legend + (input[type=radio][name=basemap] + label) x N
+ *     > fieldset > legend
+ *       + div.basemap-option(input[type=radio][name=basemap] + label) x N
  * and registers it at map position bottom-left (Task 4.1). MapLibre's base
  * `.maplibregl-ctrl-group` already gives the container the shared control
  * chrome (white background, rounded corners, shadow) so the control visually
@@ -43,10 +44,13 @@
  *
  * Fix: scope every rule under `.basemap-switcher` (no global or other-control
  * changes). Reset only the fieldset's default border/margin, add readable
- * padding, lay the options out vertically, cap the footprint with a small
- * min/max-width so it stays compact, give the legend a small heading look,
- * and make labels show a pointer cursor. Behavior, the DOM, and class names
- * (fixed by Task 3.1) are intentionally NOT changed here.
+ * padding, stack the per-option rows vertically, and lay each
+ * `.basemap-option` row as a horizontal flex so the radio and its label sit
+ * on the SAME line (smoke feedback: previously radio and label wrapped onto
+ * separate lines). Cap the footprint with a small min/max-width so it stays
+ * compact, give the legend a small heading look, and make labels show a
+ * pointer cursor. Behavior and class names (fixed by Task 3.1) are otherwise
+ * unchanged.
  *
  * Note: visual non-overlap / non-obstruction (Req 6.4) is a browser-render
  * concern and is verified by the implementation smoke checklist (Task 5.2) /
@@ -68,6 +72,12 @@
   font-size: 11px;
   font-weight: 600;
   color: #333;
+}
+
+/* radio とラベルを同一行に並べる（1 オプション＝1 行） */
+.basemap-switcher .basemap-option {
+  display: flex;
+  align-items: center;
 }
 
 .basemap-switcher label {

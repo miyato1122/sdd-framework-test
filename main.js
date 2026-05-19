@@ -200,8 +200,11 @@ function setBasemap(id) {
     map.removeLayer(prevLayerId);
     map.removeSource(prevSourceId);
 
-    // 選択 source を add（attribution は BASEMAPS に内包済み＝出典追従）。
-    map.addSource(id, entry.source);
+    // 選択 source を add。BASEMAPS は attribution を source の外に持つため
+    // ここで source へマージして渡す（未マージだと切替後に出典が消える）。
+    // 既定 AttributionControl は使用中 source の attribution を集約するため
+    // これで背景に追従して出典が表示される（Req 3.1/3.2/3.3）。
+    map.addSource(id, { ...entry.source, attribution: entry.attribution });
     // 背景は常に最下: 初期スタイル常駐の `hazard_flood-layer` を beforeId
     // に指定し重畳（hazard_ 各種・route・skhb）より下へ挿入する（Req 5.4）。
     map.addLayer(
@@ -316,8 +319,14 @@ class BasemapSwitcherControl {
             label.htmlFor = inputId;
             label.textContent = entry.label;
 
-            fieldset.appendChild(input);
-            fieldset.appendChild(label);
+            // radio とラベルを 1 行（同一行）に収める行コンテナ。
+            // fieldset は CSS で縦並び、各行内は CSS .basemap-option で
+            // radio＋label を横並びにする（Req 1.2/6.4）
+            const row = document.createElement('div');
+            row.className = 'basemap-option';
+            row.appendChild(input);
+            row.appendChild(label);
+            fieldset.appendChild(row);
         });
 
         container.appendChild(fieldset);
