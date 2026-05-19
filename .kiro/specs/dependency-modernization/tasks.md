@@ -12,7 +12,7 @@
   - _Requirements: 4.2, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
   - _Boundary: Verification Harness_
 
-- [ ] 1.2 クリーン環境の確立と Windows ファイルロック診断
+- [x] 1.2 クリーン環境の確立と Windows ファイルロック診断
   - lockfile から再現可能なクリーン環境を確立する手順を定義・実行する
   - 実行環境の Node が vite 8 要件（`^20.19.0 || >=22.12.0`）を満たすことを確認する
   - Windows のファイルロックは先に実状態を診断し、`npm install` を優先・必要時再試行で解消する
@@ -82,3 +82,6 @@
   - _Requirements: 4.1, 4.3_
   - _Depends: 4.1, 4.2_
   - _Boundary: Verification Harness_
+
+## Implementation Notes
+- 1.2: `npm run build`/`npm run preview` は追跡対象の `dist/`（Windows では CRLF 差分で ` M dist/index.html`）を再生成する。クリーン環境再現は `dist/` に触れない `npm ci` を用いる。Task 3.1 は正規にビルドするため、`dist/` 再生成を意図的に扱い（コミット対象に含めるか、probe 用途なら path-scoped `git checkout -- dist/` で復元）、破壊的な `git checkout .` / `git reset --hard` は使わないこと。

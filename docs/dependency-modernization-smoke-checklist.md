@@ -159,3 +159,98 @@
 - 各項目の「結果記録」に、依存更新前の挙動（pre-upgrade baseline）と更新後の挙動（post-upgrade result）を記録し、利用者可視のリグレッションが無いことを確認します。
 - 本書は記録枠を提供するのみで、runtime（実機での操作・観測）の実施そのものは利用者の目視判定（要件 4.2）に委ねます。
 - 全 8 項目が pass、かつ「前提」に記載のクリーン環境 build/dev/preview（Task 1.2 / 3.1 の責務）が成立した場合に限り、実機スモークを合格とします（要件 4.1）。1 項目でも fail がある場合は不合格とし、該当機能・原因を記録します（要件 4.3）。私的 API（`_watchState` / `_geometry`）起因の回帰の場合は、公開 API フォールバック適用後に連動集合 3.4 / 3.6 / 3.7 を含む全項目を再検証した上で判定します。
+
+---
+
+# クリーン環境再現手順 (Task 1.2)
+
+本セクションは設計書「Components and Interfaces → Verification → Verification Harness → Clean-env Repro Contract（2.1, 2.2）」および「Error Handling → 環境（Windows ファイルロック）」に対応する、**lockfile からの再現可能なクリーン環境確立手順**です。要件 2.1 / 2.2 のクリーン環境前提（lockfile 再現）を、後続タスク（依存版更新後の build/dev/preview 検証＝Task 3.1）が同一手順で再実行できる形で成果物化します。
+
+> 本セクション確立時点の `package.json` / `package-lock.json` は **更新前（旧版）** です（`vite@3.2.1` / `maplibre-gl@2.4.0` / `@turf/distance@6.5.0` / `maplibre-gl-opacity@1.4.0` / `maplibre-gl-gsi-terrain@0.0.2`）。本手順は依存版そのものを変更しません。依存を目標版へ更新するのは Task 2.x、目標版でのクリーン環境 build/dev/preview 成立確認は Task 3.1 の責務です。本手順は「lockfile に固定された版がクリーン環境で同一再現すること」を保証する**再現メカニズム**を定義・実証するものです。
+
+## 1. 前提となる実行環境（Node / npm 互換）
+
+- vite 8 は Node `^20.19.0 || >=22.12.0` を要求します（research.md / design.md「Technology Stack」「Allowed Dependencies」）。本タスクは依存をまだ目標版へ上げませんが、後続更新を見据え、**実行環境の Node が vite 8 のエンジン要件を満たすことを先行確認**します。
+- 確認コマンドと本タスク実行時の確認結果（fresh evidence）:
+
+  ```
+  node -v   ->  v24.14.1
+  npm -v    ->  11.12.1
+  git --version -> git version 2.43.0.windows.1
+  ```
+
+  - 判定: `v24.14.1` は `>=22.12.0` を満たすため、vite 8 のエンジン要件 `^20.19.0 || >=22.12.0` を**充足**します（design.md の「検証環境 Node v24.14.1 で充足」と整合）。
+  - 後続タスク／別環境で再現する場合は `node -v` の出力が `^20.19.0 || >=22.12.0` を満たすことを必ず先に確認してください。満たさない場合はクリーン環境 build/dev/preview（Task 3.1）に進まず、Node を要件内へ更新してから再実行します。
+
+## 2. クリーン環境再現コマンド（lockfile からの再現）
+
+クリーン環境とは「`package-lock.json` に固定された依存ツリーを、既存の `node_modules` の影響を受けずに丸ごと再構築した状態」を指します。再現の正準コマンドは以下です。
+
+```
+# リポジトリルートで実行（C:\Users\tomoa\work\sdd-framework-test）
+npm ci
+```
+
+- `npm ci` は `node_modules` を削除してから `package-lock.json` のみを権威として依存を再インストールします（`package.json` と lockfile の不整合があれば失敗）。これにより「lockfile によるクリーン環境再現」（要件 1.2 / 2.1 の前提）を厳密に満たします。
+- 再現の検証（インストール結果が lockfile と一致することの確認）:
+
+  ```
+  npm ls vite maplibre-gl @turf/distance maplibre-gl-opacity maplibre-gl-gsi-terrain --depth=0
+  ```
+
+- 環境が機能していることのライブネス確認（任意・参考）として `npm run build` を実行できます。**ただし旧 vite でのビルド成否は本タスクの合格条件ではありません**（本タスクの合格条件は「再現手順の確立＋ファイルロック診断＋Node 互換確認」）。目標版での build/dev/preview 成立判定は Task 3.1 が行います。
+- **【重要・作業ツリーを汚さない】このライブネス確認用の `npm run build` / `npm run preview` は完全に任意であり合格条件ではありません。実行した場合、追跡対象の `dist/` 配下が再生成され（Windows では CRLF/LF 正規化差を含む）作業ツリーが modified になります。`dist/` は本タスクの境界（_Boundary: Verification Harness_ = `docs/` のみ）の外であるため、ライブネス確認で `dist/` を再生成した場合は必ず `git checkout -- dist/`（パス限定。`git checkout .` や `git reset --hard` 等の広域・破壊的ロールバックは禁止）で `dist/` を HEAD に戻し、手順が作業ツリーを汚れたまま終わらせないこと。クリーン環境の再現確認自体は `dist/` を変更しない `npm ci` で行えます（ライブネス確認の build は不要）。**
+
+### 本タスク実行時のクリーン環境再現エビデンス（fresh evidence）
+
+- `npm ci` 実行結果: `added 58 packages, and audited 59 packages in 5s`（Windows ファイルロックエラーなしで完走。`node_modules` を削除して lockfile から再構築）。
+- `npm ls --depth=0` で再現された版（= lockfile 固定の旧版と一致 → 再現性確認）:
+
+  ```
+  02_advanced@0.0.0
+  +-- @turf/distance@6.5.0
+  +-- maplibre-gl-gsi-terrain@0.0.2
+  +-- maplibre-gl-opacity@1.4.0
+  +-- maplibre-gl@2.4.0
+  `-- vite@3.2.1
+  ```
+
+- ライブネス確認（参考・旧 vite）: `npm run build` は `vite v3.2.1 building for production... ✓ 23 modules transformed.` で `dist/` 成果物を生成（クリーン環境が機能していることの参考シグナル。本タスクの合格条件ではない）。
+- 副作用なし: `npm ci` 実行後も `package.json` / `package-lock.json` / `main.js` に差分なし（境界保持）。
+
+## 3. Windows ファイルロックの診断と解消（design.md「環境（Windows ファイルロック）」対応）
+
+steering / project memory に「Windows では npm install / git ref 操作が `node_modules` ネイティブファイル書込のファイルロックで断続失敗する」既知の癖があります。**先に実状態を診断し、`npm install` を優先、トランジェントなロックは再試行で解消**する方針です。
+
+### 診断手順（クリーン環境再現の前に必ず実施）
+
+1. 作業ツリー状態: `git status --porcelain`（`package.json` / `package-lock.json` / `node_modules` 周りに想定外の変更・ロック痕跡がないか）。
+2. lockfile 存在: `ls -la package-lock.json`（lockfile が存在し読めること）。
+3. `node_modules` 存在: ディレクトリの有無（存在する場合、`npm ci` が削除→再構築する）。
+4. 直近で別プロセス（dev サーバ・エディタのファイルウォッチャ・ウイルススキャン）が `node_modules` を掴んでいないこと。掴んでいる場合は停止してから再実行。
+
+### 本タスク実行時の診断結果（fresh evidence）
+
+- `git status --porcelain`: 追跡対象の変更は `.kiro/` 配下のスペック成果物のみ。`package.json` / `package-lock.json` / `node_modules` に異常なし。
+- `ls -la package-lock.json`: `-rw-r--r-- 1 tomoa 197609 59748 ... package-lock.json`（存在・読取可）。
+- `node_modules`: 実行前に存在 → `npm ci` が削除して lockfile から再構築。
+- **ファイルロック状態の判定**: 本タスク実行時の `npm ci` は **1 回目で Windows ファイルロックエラーなく完走**（`added 58 packages ... in 5s`）。すなわち本実行ではファイルロックは発生せず、クリーン環境再現が成立。診断・解消結果として記録します。
+
+### 解消（ファイルロックが発生した場合の手順）
+
+本実行ではロックは発生しませんでしたが、再現環境でロックが発生した場合の解消手順を以下に定めます（design.md「`npm install` 優先・再試行」方針）。
+
+1. `node_modules` を掴むプロセス（dev/preview サーバ、エディタのファイルウォッチャ、ウイルススキャン）を停止する。
+2. クリーン再現の第一手は `npm ci`。`EBUSY` / `EPERM` / `ENOTEMPTY` 等のロック系エラーで失敗した場合は、**lockfile を権威に保ったまま** `npm install` を優先して再試行する（steering の「`npm install` を優先・必要時再試行」に従う。`package.json` は変更しないので lockfile への意図しない書換えは発生しない想定）。
+3. それでもトランジェントなロックで失敗する場合は、数秒待って `npm ci`（または `npm install`）を**再試行**する（最大数回）。
+4. 永続的に解消できない場合は、偽 green を作らず Task ステータスを BLOCKED とし、ロック源（掴んでいるプロセス／パス）と再現条件を記録する（design.md「偽 green 排除」・project memory「false-green 前例」に従う）。
+
+## 4. 後続タスクのための再現チェックリスト
+
+後続（Task 3.1 等）でクリーン環境を再現する際は、本セクションの順序で実行します。
+
+1. `node -v` が `^20.19.0 || >=22.12.0` を満たすことを確認（vite 8 エンジン要件）。
+2. ファイルロック診断（§3 診断手順）を先に実施。
+3. `npm ci` でクリーン環境を再現（ロック時は §3 解消手順に従い `npm install` 優先・再試行）。
+4. `npm ls <5 依存> --depth=0` で解決版が想定（その時点の lockfile 固定版）と一致することを確認。
+5. （Task 3.1 の責務）目標版更新後は `npm run build` / `npm run dev|preview` の成立とブラウザコンソールエラー無しを確認（要件 2.1 / 2.2）。本セクションは再現メカニズムの提供までを担い、目標版での build/dev/preview 合否判定は行いません。
