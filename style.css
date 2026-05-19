@@ -23,3 +23,61 @@
   height: 0;
   background: transparent;
 }
+
+/*
+ * Minimal scoped styling for the basemap switcher control (basemap-switcher
+ * spec, Task 3.2, Requirement 6.4).
+ *
+ * Why: Task 3.1 builds the control as
+ *   div.maplibregl-ctrl.maplibregl-ctrl-group.basemap-switcher
+ *     > fieldset > legend + (input[type=radio][name=basemap] + label) x N
+ * and registers it at map position bottom-left (Task 4.1). MapLibre's base
+ * `.maplibregl-ctrl-group` already gives the container the shared control
+ * chrome (white background, rounded corners, shadow) so the control visually
+ * harmonizes with the other controls (OpacityControl top-left/top-right,
+ * Geolocate/Terrain bottom-right) without restyling them. But a default
+ * <fieldset> ships with a browser border + padding + margin and stacks its
+ * radio/label pairs as inline content, which both fights the ctrl-group
+ * chrome and lets the control grow wider than needed — risking overlap and
+ * obstructing map pan/zoom in the bottom-left corner (Req 6.4).
+ *
+ * Fix: scope every rule under `.basemap-switcher` (no global or other-control
+ * changes). Reset only the fieldset's default border/margin, add readable
+ * padding, lay the options out vertically, cap the footprint with a small
+ * min/max-width so it stays compact, give the legend a small heading look,
+ * and make labels show a pointer cursor. Behavior, the DOM, and class names
+ * (fixed by Task 3.1) are intentionally NOT changed here.
+ *
+ * Note: visual non-overlap / non-obstruction (Req 6.4) is a browser-render
+ * concern and is verified by the implementation smoke checklist (Task 5.2) /
+ * user verification — not asserted from static analysis.
+ */
+.basemap-switcher fieldset {
+  margin: 0;
+  border: 0;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 110px;
+  max-width: 200px;
+}
+
+.basemap-switcher legend {
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #333;
+}
+
+.basemap-switcher label {
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.basemap-switcher input[type='radio'] {
+  margin: 0 6px 0 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
