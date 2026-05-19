@@ -43,7 +43,7 @@
   - _Boundary: Dependency Set_
 
 - [ ] 3. Integration: クリーン環境ビルド/起動の成立確認
-- [ ] 3.1 クリーン環境で build/dev/preview を実行し健全性を判定
+- [x] 3.1 クリーン環境で build/dev/preview を実行し健全性を判定
   - クリーン環境（再生成 lockfile）で本番ビルドを実行し、エラーなく配信成果物が生成されることを確認する
   - dev / preview を起動し、ブラウザコンソールにエラーがないこと・初期地図が表示されることを確認する
   - `@turf/distance` の default export 互換はビルド成否で判定し、事前断定しない
@@ -86,3 +86,4 @@
 ## Implementation Notes
 - 1.2: `npm run build`/`npm run preview` は追跡対象の `dist/`（Windows では CRLF 差分で ` M dist/index.html`）を再生成する。クリーン環境再現は `dist/` に触れない `npm ci` を用いる。Task 3.1 は正規にビルドするため、`dist/` 再生成を意図的に扱い（コミット対象に含めるか、probe 用途なら path-scoped `git checkout -- dist/` で復元）、破壊的な `git checkout .` / `git reset --hard` は使わないこと。
 - 2.2: クリーン再インストール時、旧 vite3 由来の残留 esbuild サービスデーモン（zombie PID）が `node_modules\.esbuild-*\esbuild.exe` をロックし `npm warn cleanup EPERM` を起こすことがある。これが Windows ファイルロックの実体。Task 3.1 で `npm run build`（vite8/esbuild 新版）実行前に、残留 esbuild プロセスを診断・終了してから実行すること。lockfile は `npm ci` で hash 不変・byte 同一再現を確認済み（偽green ガード済み）。
+- 3.1: `maplibre-gl-opacity@1.8.0` は破壊的に `exports` フィールド導入＋CSS を `dist/`→`build/` 移設（CSS サブパス未公開）。`main.js:7` を `import './node_modules/maplibre-gl-opacity/build/maplibre-gl-opacity.css';`（exports ゲートを回避しつつ stylesheet をバンドル）へ修正＝modernization 起因の3つ目の最小ソース調整。design.md は Revalidation Trigger 発火として再整合済み（requirements In-scope 準拠）。R3.2 opacity パネルの見た目はこの相対パス経由で維持（4.1 実機スモークで見た目が崩れていればこの経路を疑う）。相対 node_modules パスはやや非慣用で将来の bundler/package layout 変更で再訪要。

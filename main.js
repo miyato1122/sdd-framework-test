@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 // OpacityControlプラグインの読み込み
 import OpacityControl from 'maplibre-gl-opacity';
-import 'maplibre-gl-opacity/dist/maplibre-gl-opacity.css';
+import './node_modules/maplibre-gl-opacity/build/maplibre-gl-opacity.css';
 
 // 地点間の距離を計算するモジュール
 import distance from '@turf/distance';
