@@ -55,7 +55,7 @@
   - _Boundary: Verification Harness, Dependency Set_
 
 - [ ] 4. Validation: 実機スモーク・条件付き互換調整・再検証ループ・合格判定
-- [ ] 4.1 実機スモークを実施し更新前後リグレッションを判定
+- [x] 4.1 実機スモークを実施し更新前後リグレッションを判定
   - 1.1 のチェックリストで R3.1〜3.8 を実機目視（目視は利用者実施、実装側は再現手順提供）
   - 1.3 のベースラインと突き合わせ、利用者可視リグレッションの有無を判定する
   - 現在地・経路系（3.4 / 3.6 / 3.7）は連動グループとして一括検証する
@@ -87,3 +87,4 @@
 - 1.2: `npm run build`/`npm run preview` は追跡対象の `dist/`（Windows では CRLF 差分で ` M dist/index.html`）を再生成する。クリーン環境再現は `dist/` に触れない `npm ci` を用いる。Task 3.1 は正規にビルドするため、`dist/` 再生成を意図的に扱い（コミット対象に含めるか、probe 用途なら path-scoped `git checkout -- dist/` で復元）、破壊的な `git checkout .` / `git reset --hard` は使わないこと。
 - 2.2: クリーン再インストール時、旧 vite3 由来の残留 esbuild サービスデーモン（zombie PID）が `node_modules\.esbuild-*\esbuild.exe` をロックし `npm warn cleanup EPERM` を起こすことがある。これが Windows ファイルロックの実体。Task 3.1 で `npm run build`（vite8/esbuild 新版）実行前に、残留 esbuild プロセスを診断・終了してから実行すること。lockfile は `npm ci` で hash 不変・byte 同一再現を確認済み（偽green ガード済み）。
 - 3.1: `maplibre-gl-opacity@1.8.0` は破壊的に `exports` フィールド導入＋CSS を `dist/`→`build/` 移設（CSS サブパス未公開）。`main.js:7` を `import './node_modules/maplibre-gl-opacity/build/maplibre-gl-opacity.css';`（exports ゲートを回避しつつ stylesheet をバンドル）へ修正＝modernization 起因の3つ目の最小ソース調整。design.md は Revalidation Trigger 発火として再整合済み（requirements In-scope 準拠）。R3.2 opacity パネルの見た目はこの相対パス経由で維持（4.1 実機スモークで見た目が崩れていればこの経路を疑う）。相対 node_modules パスはやや非慣用で将来の bundler/package layout 変更で再訪要。
+- 4.1: 利用者実機スモークで機能 R3.1〜3.8 は全 pass（私的API起因の機能破綻なし＝4.2 の私的API置換は不要）。一方 `maplibre-gl-opacity 1.8.0` 同梱 CSS が `#opacity-control` パネル下端に下線を新規描画する**更新起因の視覚リグレッション**を検出（更新前は無し・利用者確認）。要件 3.2/4.4 該当。利用者選択 (A) で本スペック内パリティ回復＝Task 4.2 で最小 CSS override により下線抑止し更新前の見た目へ戻す。design.md は Revalidation Trigger 2度目発火として Source Compatibility Adjustments に (c) 視覚パリティ回復を追加・再整合済み。
