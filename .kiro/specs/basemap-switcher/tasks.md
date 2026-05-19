@@ -28,7 +28,7 @@
   - _Depends: 1.2_
 
 - [ ] 3. Core: 切替コントロール UI
-- [ ] 3.1 BasemapSwitcherControl（IControl）の実装
+- [x] 3.1 BasemapSwitcherControl（IControl）の実装
   - `maplibregl-ctrl maplibregl-ctrl-group` コンテナ内に `<fieldset>`＋支援技術用 `<legend>`＋`name="basemap"` の `<input type="radio">`＋`<label for>` を BASEMAPS 件数ぶん生成する
   - 既定（OSM）の radio を checked にし、change イベントで setBasemap を呼ぶ。onRemove でリスナ解放・DOM 除去。getDefaultPosition は `'bottom-left'`
   - ネイティブ radio によりキーボード操作・支援技術ラベル・選択状態提示を満たす

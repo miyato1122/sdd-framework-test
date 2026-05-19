@@ -217,6 +217,153 @@ function setBasemap(id) {
     currentBasemapId = id;
 }
 
+/**
+ * 背景地図切替コントロール（MapLibre IControl）。
+ *
+ * 地図左下に配置する背景地図の排他選択 UI。BASEMAPS の各エントリを
+ * ネイティブ `<input type="radio">` ＋ `<label for>` として `<fieldset>`／
+ * `<legend>` 内に生成し、選択を setBasemap へ結線する（Req 1.1/1.2/1.5/
+ * 6.1/6.2/6.3）。
+ *
+ * DOM は document.createElement / textContent のみで構築し、innerHTML 経路に
+ * データを流さない（security.md。ラベルは BASEMAPS の開発者定数だが安全な
+ * DOM 構築に統一する）。ネイティブ radio／label／fieldset／legend を用いる
+ * ことでキーボード操作（Req 6.1）・支援技術ラベル（Req 6.2）・選択状態の
+ * 提示（checked radio。Req 6.3）を標準セマンティクスで満たし、独自 ARIA
+ * ウィジェットは構築しない。実行時状態は DOM の checked radio が唯一の
+ * 真実で、内部に重複状態を持たない。
+ *
+ * 本クラスは定義のみで、map.addControl 登録・初期スタイル整合は task 4.1、
+ * 最小スタイル（style.css）は task 3.2 の責務（本タスクは additive）。
+ *
+ * @implements {maplibregl.IControl}
+ */
+class BasemapSwitcherControl {
+    constructor() {
+        /**
+         * onAdd で生成するコンテナ要素（onRemove での確実な除去用）。
+         * @type {HTMLDivElement|null}
+         */
+        this._container = null;
+        /**
+         * change リスナ参照（onRemove で確実に解放しリークを防ぐ）。
+         * @type {((e: Event) => void)|null}
+         */
+        this._onChange = null;
+    }
+
+    /**
+     * コントロールの DOM を生成して返す（MapLibre IControl）。
+     *
+     * `maplibregl-ctrl maplibregl-ctrl-group` ＋ feature class
+     * `basemap-switcher`（task 3.2 の CSS 標的）の div 内に、支援技術用
+     * 見出しの `<legend>` を持つ `<fieldset>` を作り、BASEMAPS の各
+     * エントリぶん `name="basemap"` の radio ＋ 対応 `<label for>` を
+     * 生成する。currentBasemapId（既定 'osm'）に一致する radio を
+     * checked にして現在選択を明示する（Req 1.2/1.5/1.6/6.2/6.3）。
+     * radio の change で setBasemap(selectedId) を呼ぶ（Req 1.3/1.4）。
+     *
+     * @param {maplibregl.Map} _map MapLibre Map（本コントロールは Map API を直接使わず setBasemap 経由のため未使用）
+     * @returns {HTMLElement} コントロールのルート要素
+     */
+    onAdd(_map) {
+        // コンテナ: 既存コントロールと同じ MapLibre クラス＋feature class
+        const container = document.createElement('div');
+        container.className =
+            'maplibregl-ctrl maplibregl-ctrl-group basemap-switcher';
+
+        // fieldset/legend で選択肢グループを支援技術へ提示（Req 6.2）
+        const fieldset = document.createElement('fieldset');
+        const legend = document.createElement('legend');
+        legend.textContent = '背景地図';
+        fieldset.appendChild(legend);
+
+        // change はグループ内のどの radio でも単一ハンドラで受ける
+        this._onChange = (e) => {
+            const target = e.target;
+            // basemap グループの radio 以外は無視（防御的）
+            if (
+                !target ||
+                target.name !== 'basemap' ||
+                target.type !== 'radio'
+            ) {
+                return;
+            }
+            // 選択された背景 id を setBasemap へ結線（単一性は setBasemap が担保）
+            setBasemap(target.value);
+        };
+        fieldset.addEventListener('change', this._onChange);
+
+        // BASEMAPS の各エントリを radio ＋ label として安全な DOM API で構築
+        BASEMAPS.forEach((entry) => {
+            const inputId = `basemap-option-${entry.id}`;
+
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'basemap';
+            input.id = inputId;
+            input.value = entry.id;
+            // 既定（currentBasemapId='osm'）に一致する radio を checked
+            // にして現在選択を明示（Req 1.5/1.6/6.3）
+            if (entry.id === currentBasemapId) {
+                input.checked = true;
+            }
+
+            // label[for] で radio と関連付け、支援技術が読み上げ可能な
+            // 識別ラベルを付与（Req 1.2/6.2）。テキストは textContent で
+            // 構築し innerHTML 経路にデータを渡さない（security.md）
+            const label = document.createElement('label');
+            label.htmlFor = inputId;
+            label.textContent = entry.label;
+
+            fieldset.appendChild(input);
+            fieldset.appendChild(label);
+        });
+
+        container.appendChild(fieldset);
+        this._container = container;
+        return container;
+    }
+
+    /**
+     * コントロールを取り外す（MapLibre IControl）。
+     *
+     * change リスナを解放し DOM を親から切り離してリークを防ぐ。
+     *
+     * @returns {void}
+     */
+    onRemove() {
+        if (this._container) {
+            // change リスナを確実に解放（fieldset 上に登録済み）
+            if (this._onChange) {
+                const fieldset = this._container.querySelector('fieldset');
+                if (fieldset) {
+                    fieldset.removeEventListener('change', this._onChange);
+                }
+            }
+            // DOM を親から切り離す
+            if (this._container.parentNode) {
+                this._container.parentNode.removeChild(this._container);
+            }
+        }
+        this._container = null;
+        this._onChange = null;
+    }
+
+    /**
+     * 既定の配置位置（MapLibre IControl）。
+     *
+     * 背景地図切替コントロールは地図の左下に配置する（Req 1.1）。
+     * task 4.1 の addControl 第2引数でも明示するが、IControl 契約として
+     * ここでも 'bottom-left' を返す。
+     *
+     * @returns {'bottom-left'}
+     */
+    getDefaultPosition() {
+        return 'bottom-left';
+    }
+}
+
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
     zoom: 5, // 初期表示のズーム
