@@ -1,0 +1,25 @@
+/*
+ * Visual parity restoration for dependency-modernization (Task 4.2, variant (c)).
+ *
+ * Why: Upgrading `maplibre-gl-opacity` 1.4.0 -> 1.8.0 changed its bundled CSS.
+ * The 1.8.0 bundle styles the widget's trailing <hr> with only
+ * `#opacity-control hr{margin:5px 10px 5px 0}` and no border reset, so the
+ * <hr> falls back to the browser default border and renders as a visible
+ * underline/separator at the bottom of the #opacity-control panel.
+ * The pre-upgrade (1.4.0) panel had no such line (Task 1.3 baseline; the
+ * regression was confirmed by the user in the Task 4.1 record). This is a
+ * Requirement 3.2 / 4.4 visual-parity violation.
+ *
+ * Fix: neutralize ONLY the rendered border of `#opacity-control hr` so the
+ * panel matches the pre-upgrade appearance (no underline). Behavior, layout
+ * spacing (margin), and widget function are intentionally NOT changed. This
+ * selector is identical-specificity to and ordered AFTER the upstream
+ * `#opacity-control hr{...}` rule (style.css imported after the widget CSS),
+ * so the cascade lets this win without needing `!important`.
+ */
+#opacity-control hr {
+  border: 0;
+  border-top: 0;
+  height: 0;
+  background: transparent;
+}

@@ -5,6 +5,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // OpacityControlプラグインの読み込み
 import OpacityControl from 'maplibre-gl-opacity';
 import './node_modules/maplibre-gl-opacity/build/maplibre-gl-opacity.css';
+// App-level visual-parity override (must load AFTER the widget CSS above so
+// the cascade lets the override win). See style.css (Task 4.2 variant (c)).
+import './style.css';
 
 // 地点間の距離を計算するモジュール
 import distance from '@turf/distance';

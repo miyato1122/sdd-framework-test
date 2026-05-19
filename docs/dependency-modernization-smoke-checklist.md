@@ -295,3 +295,22 @@ steering / project memory に「Windows では npm install / git ref 操作が `
 
 - **リグレッション判定**: 利用者可視リグレッション **1 件あり**（要件 3.2 / 4.4 該当）。`maplibre-gl-opacity` を 1.4.0→1.8.0 に更新した結果、ウィジェット同梱 CSS が `#opacity-control` パネル下端に下線（border/区切り）を新たに描画。更新前ベースライン（1.3）には存在しなかった＝**アップグレード起因の視覚リグレッション**（利用者確認: 更新前は「ない」）。私的API（_watchState/_geometry）起因の機能破綻ではない。
 - **対応方針**: 利用者選択 **(A) 本スペック内で視覚パリティ回復**。要件 4.4「更新前後で利用者可視リグレッションなし」を満たすため、機能・UI 機能を変えず最小の CSS override 等で更新前の見た目（下線なし）へ戻す。Task 4.2（条件付き互換調整）の対象としてルーティング（私的API置換は不要、CSS パリティ回復のみ実施）。修正後は再検証ループ（再ビルド＋当該項目の利用者再目視）。
+
+# Task 4.2 判断記録（条件付き互換調整の適用判断）
+
+- **記録日**: 2026-05-19
+- **対象状態**: 更新後（目標版）。`vite 8.0.13` / `maplibre-gl 5.24.0` / `@turf/distance 7.3.5` / `maplibre-gl-opacity 1.8.0` / `maplibre-gl-gsi-terrain 2.3.2`。
+- **根拠**: 設計書「Source Compatibility Adjustments」Responsibilities & Constraints、「Watch-state Behavior Contract（3.4）」「Nearest-geometry Behavior Contract（3.6, 3.7）」、Task 4.1 更新後スモーク結果、要件 R3.2 / R3.4 / R3.6 / R3.7 / R4.4。
+
+## (a) 私的 API 2 箇所の置換: 不要（無改修）と判断
+
+- **判断**: `main.js:545`（`geolocationControl._watchState`）および `main.js:568`（`nearestFeature._geometry.coordinates`）の私的 API 参照は **置換しない（ソース無改修）**。
+- **理由（検証可能なエビデンスに基づく）**: Task 4.1 の更新後実機スモーク（利用者目視・2026-05-19）で、私的 API に依存する受け入れ基準 **3.4 / 3.6 / 3.7（連動集合）が全て更新後も期待どおりに機能し、ベースライン（Task 1.3）と一致**したことが利用者報告で確認済み。すなわち目標版（maplibre-gl 5.24.0）でも `_watchState` / `_geometry` の参照は破綻していない。
+- **設計契約との整合**: 設計の Watch-state / Nearest-geometry Behavior Contract は私的 API 置換を **「実機破綻時にのみ」適用する条件付き調整**と規定する（System Flows: 「私的 API 起因の回帰のみフォールバック適用」）。3.4/3.6/3.7 に破綻が無い以上、置換の前提条件が成立せず、不要改修の回避（設計 Implementation Notes「未破綻なら無改修」）に従い無改修とする。これにより `main.js:545/568` は本タスクで変更しない。
+
+## (c) modernization 起因の視覚パリティ回復: CSS override を適用
+
+- **判断**: Task 4.1 で検出された更新起因の視覚リグレッション（`#opacity-control` パネル下端の下線／区切り線）に対し、利用者選択 (A) に従い **最小 CSS override を適用**して更新前（1.4.0）の見た目（下線なし）へ回復する。挙動・UI 機能は変更しない。
+- **特定した原因規則（ビルド済みバンドル）**: `dist/assets/index-BvMiK_QV.css` 内、`maplibre-gl-opacity@1.8.0` 同梱 CSS 由来の唯一の `hr` 規則 `#opacity-control hr{margin:5px 10px 5px 0}`。border リセットを持たないため、OpacityControl が描画する末尾 `<hr>`（baseLayers のみ構成時、ラジオ群直後＝パネル下端に位置）が **ブラウザ既定の `hr` ボーダー**で描画され、下線として可視化される。更新前 1.4.0 では本下線が出ていなかった（Task 1.3 ベースライン・利用者確認）＝アップグレード起因（R3.2/R4.4 パリティ違反）。
+- **適用した override（最小・限定）**: 追跡対象の空ファイル `style.css` に `#opacity-control hr { border:0; border-top:0; height:0; background:transparent; }` を追加し、`main.js` の `maplibre-gl-opacity` CSS import（:7）**直後**に `import './style.css';` を 1 行追加（カスケード順を後勝ちにするため）。同一詳細度かつ後置のため `!important` 不要。margin（レイアウト間隔）・ウィジェット機能は変更せず、下線描画のみを無効化する最小調整。
+- **再検証ループ**: 設計 Implementation Notes（Integration）に従い、本 override 適用後にクリーン環境ビルド（`vite build --base=./`）を再実行し、リビルドされた `dist/assets/index-*.css` に override が含まれることを確認する。**実機での視覚回復（下線が消えパネルが更新前と一致）の最終目視確認は利用者が実施**（要件 4.2）。コード側は最終視覚確認を行わず、利用者の再目視を経て Task 4.3 の最終合否判定に進む（偽 green 排除）。

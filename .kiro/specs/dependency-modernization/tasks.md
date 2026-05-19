@@ -64,7 +64,7 @@
   - _Depends: 3.1_
   - _Boundary: Verification Harness_
 
-- [ ] 4.2 私的API起因の回帰時のみ公開APIへ条件付き置換し、適用時は再検証ループを実行
+- [x] 4.2 私的API起因の回帰時のみ公開APIへ条件付き置換し、適用時は再検証ループを実行
   - 4.1 で 3.4（現在地オフ非表示）または 3.6 / 3.7（経路ライン表示/非表示）が破綻した場合のみ、`geolocationControl._watchState`（main.js:545）/ `nearestFeature._geometry.coordinates`（main.js:568）を公開 API へ置換する
   - 破綻しない場合は無改修とし、3.4 / 3.6 / 3.7 が無改修で維持される根拠を記録する（成果物＝判断記録）
   - 置換した場合は Task 3.1（クリーン環境ビルド/起動）と Task 4.1（全スモーク、3.4/3.6/3.7 連動含む）を再実行し、記録を更新する
@@ -88,3 +88,4 @@
 - 2.2: クリーン再インストール時、旧 vite3 由来の残留 esbuild サービスデーモン（zombie PID）が `node_modules\.esbuild-*\esbuild.exe` をロックし `npm warn cleanup EPERM` を起こすことがある。これが Windows ファイルロックの実体。Task 3.1 で `npm run build`（vite8/esbuild 新版）実行前に、残留 esbuild プロセスを診断・終了してから実行すること。lockfile は `npm ci` で hash 不変・byte 同一再現を確認済み（偽green ガード済み）。
 - 3.1: `maplibre-gl-opacity@1.8.0` は破壊的に `exports` フィールド導入＋CSS を `dist/`→`build/` 移設（CSS サブパス未公開）。`main.js:7` を `import './node_modules/maplibre-gl-opacity/build/maplibre-gl-opacity.css';`（exports ゲートを回避しつつ stylesheet をバンドル）へ修正＝modernization 起因の3つ目の最小ソース調整。design.md は Revalidation Trigger 発火として再整合済み（requirements In-scope 準拠）。R3.2 opacity パネルの見た目はこの相対パス経由で維持（4.1 実機スモークで見た目が崩れていればこの経路を疑う）。相対 node_modules パスはやや非慣用で将来の bundler/package layout 変更で再訪要。
 - 4.1: 利用者実機スモークで機能 R3.1〜3.8 は全 pass（私的API起因の機能破綻なし＝4.2 の私的API置換は不要）。一方 `maplibre-gl-opacity 1.8.0` 同梱 CSS が `#opacity-control` パネル下端に下線を新規描画する**更新起因の視覚リグレッション**を検出（更新前は無し・利用者確認）。要件 3.2/4.4 該当。利用者選択 (A) で本スペック内パリティ回復＝Task 4.2 で最小 CSS override により下線抑止し更新前の見た目へ戻す。design.md は Revalidation Trigger 2度目発火として Source Compatibility Adjustments に (c) 視覚パリティ回復を追加・再整合済み。
+- 4.2: 根因＝OpacityControl が `baseLayers` のみ構成でパネル末尾に `<hr>` を描画。`maplibre-gl-opacity 1.8.0` 同梱 CSS は `#opacity-control hr{margin:...}` のみで border リセットが無く、`<hr>` がブラウザ既定 border＝下線化（1.4.0 では抑止されていた）。修正＝`style.css` に `#opacity-control hr{border:0;...}` を追加し `main.js` に `import './style.css';` を maplibre-gl-opacity CSS import 直後へ1行追加（同 specificity・後勝ちカスケード、`!important` 不使用）。私的API（545/568）は無変更（4.1 で機能 pass のため設計「未破綻なら無改修」）。再ビルドで override がバンドル内に存在しカスケード勝ちを確認。**視覚最終確認（下線消失・新たな崩れ無し）は利用者の再目視待ち（R4.2・design 再検証ループ）→ 4.3 前の人手ゲート**。
