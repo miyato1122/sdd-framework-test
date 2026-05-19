@@ -15,6 +15,45 @@ import distance from '@turf/distance';
 // 地理院標高タイルをMapLibre GL JSで利用するためのモジュール
 import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 
+/**
+ * 出典メタデータ（開発者が定義する信頼できる定数のみ）
+ * @typedef {Object} BasemapAttribution
+ * @property {string} label 表示ラベル（markupを含まないテキスト定数）
+ * @property {string} url   リンク先URL（http/httpsのみ許容）
+ */
+
+/**
+ * 出典を信頼定数から安全に構築する（fail-closed）。
+ *
+ * 入力は開発者が定義する定数のみを想定し、利用者入力・外部由来データを
+ * 引数に取らず補間もしない（Req 4.1/4.2）。URLのスキームが http/https の
+ * ときのみラベルとURLを分離した最小の <a> 文字列を返し、それ以外（例:
+ * `javascript:` / `data:`）は fail-closed でラベルテキストのみを返す
+ * （Req 4.3）。ラベルはmarkupを含まない前提のテキスト定数として扱い、
+ * MapLibre v5 の DOMPurify サニタイズと併せて多層防御とする（Req 4.4）。
+ *
+ * @param {BasemapAttribution} attr 開発者定義の信頼定数 {label, url}
+ * @returns {string} MapLibre source.attribution へ渡す文字列
+ *   （http(s) なら最小 <a>、不適合ならラベルのみ）
+ */
+function buildAttribution(attr) {
+    const label = attr.label;
+    const url = attr.url;
+    // スキーム検証: http / https のみ allow-list（fail-closed）
+    let isHttp = false;
+    try {
+        // location.href を基準に解決し protocol を判定する
+        isHttp = /^https?:$/.test(new URL(url, location.href).protocol);
+    } catch {
+        // URL として解釈できない場合も fail-closed
+        isHttp = false;
+    }
+    // スキーム非適合はラベルのみ（<a> を生成しない）
+    if (!isHttp) return label;
+    // ラベルとURLを分離: URL は href 属性、ラベルは要素テキストへ
+    return `<a href="${url}" target="_blank" rel="noopener">${label}</a>`;
+}
+
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
     zoom: 5, // 初期表示のズーム

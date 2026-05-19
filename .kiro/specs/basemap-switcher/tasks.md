@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Core: 背景地図レジストリと出典安全ビルダ
-- [ ] 1.1 出典安全ビルダの実装
+- [x] 1.1 出典安全ビルダの実装
   - 型付き定数 `{label, url}` を受け、`new URL(url, location.href).protocol` が `http`/`https` のときのみ `rel="noopener"` `target="_blank"` 付きの最小 `<a>` 文字列を生成する
   - スキーム非適合（`javascript:` 等）は fail-closed でラベルテキストのみ返す
   - 利用者入力・外部由来データを引数に取らず補間しない（開発者統制下の定数のみ）
