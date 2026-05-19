@@ -66,6 +66,7 @@
   - _Depends: 5.1, 3.2_
 
 ## Implementation Notes
+- 完了: 2026-05-19 ユーザー実機スモークで全項目 PASS（差し戻し2点修正後に再確認）→ フィーチャー受け入れ・完了。OSM 出典の `©` 付与は任意フォローアップとして未実施（ユーザー受け入れ時点で不要判断）。
 - スモーク差し戻し#1（cross-task 契約バグ）: BASEMAPS は `attribution` を `source` の **外**に持つ（1.2 の構造）。背景 source を addSource する全経路は `{ ...entry.source, attribution: entry.attribution }` でマージ必須。`setBasemap`(2.1) が `entry.source` のみ渡しており切替後に出典が消失（初期 OSM は 4.1 の merge で偶然表示されていたためマスクされた）。修正済。教訓: レジストリが属性を分離保持する場合、消費側の全注入点で同一マージ規約を守る／cross-task 検証で「契約形 vs 消費形」を突き合わせる。
 - スモーク差し戻し#2（レイアウト）: コントロールは各オプションを `div.basemap-option` で包み、CSS `.basemap-option{display:flex;align-items:center}` で radio＋label を同一行に、fieldset 縦並びで 1 オプション 1 行。CSS の構造コメントも実 DOM に追従更新（stale コメント回避）。
 - 5.1: 当 Windows 環境で `npm ci` は `@rolldown/binding-win32-x64-msvc/...node` の OS 書込拒否（既知特性）で失敗する。クリーン環境再現は `npm install`（lockfile 整合・全消去回避）を正準とする＝偽 green ではなく特性起因の限定を明示。検証実績: install EXIT0/脆弱性0、build EXIT0、preview/dev とも HTTP 200（map div＋script 配信）。dev/preview はバックグラウンド起動→node fetch で 200 確認→port 5173/4175 を taskkill 停止（背景タスクの "failed exit1" は taskkill の結果＝サーバ自体は起動成功）。最終検証（kiro-validate-impl）もこの方針。
