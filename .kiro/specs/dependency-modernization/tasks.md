@@ -27,7 +27,7 @@
   - _Boundary: Verification Harness_
 
 - [ ] 2. Core: 依存の協調一括更新
-- [ ] 2.1 5依存を目標版へ更新し package.json を書き換え
+- [x] 2.1 5依存を目標版へ更新し package.json を書き換え
   - devDependencies の vite、dependencies の maplibre-gl / @turf/distance / maplibre-gl-opacity / maplibre-gl-gsi-terrain を目標版へ更新する
   - 指定 5 依存以外の追加・削除・版変更を行わない
   - 完了状態: package.json の 5 依存が vite 8.0.13 / maplibre-gl 5.24.0 / @turf/distance 7.3.5 / maplibre-gl-opacity 1.8.0 / maplibre-gl-gsi-terrain 2.3.2 を指し、他依存は不変
