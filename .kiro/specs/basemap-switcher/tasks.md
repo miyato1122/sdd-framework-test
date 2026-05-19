@@ -9,7 +9,7 @@
   - _Requirements: 3.2, 4.1, 4.2, 4.3, 4.4_
   - _Boundary: buildAttribution_
 
-- [ ] 1.2 背景地図レジストリ BASEMAPS の定義
+- [x] 1.2 背景地図レジストリ BASEMAPS の定義
   - 4 種（OSM / 地理院地図標準 / 航空写真 / 白地図）の id・日本語ラベル・raster source 定義（tiles・tileSize 256・per-source の minzoom/maxzoom）をレジストリとして定義する
   - ズーム/形式差を吸収: 航空写真は `.jpg`、白地図は maxzoom 14、地理院標準は maxzoom 18、OSM は既存値（maxzoom 19）を踏襲
   - 各 source の `attribution` を 1.1 のビルダ経由で設定し、OSM エントリは初期スタイルの既存 `osm` 定義と一致させる（既定＝OSM）
@@ -64,3 +64,9 @@
   - 観測可能な完了: 全受け入れ基準に対応したチェックリスト成果物が用意され、ユーザーへの実機目視確認依頼が明示される
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4_
   - _Depends: 5.1, 3.2_
+
+## Implementation Notes
+- 環境: subagent 追加利用枠が断続的に枯渇（リセット 17:20 Asia/Tokyo）。枯渇時は reviewer-prompt 許可のフォールバックでメインコンテキストにて kiro-review 手順を完全適用してレビューする（チェックを弱めない）。
+- dist 方針: `npm run build` 実行で `dist/*` が再生成され git diff に出るが、これは検証生成物。per-task コミットには **source＋tasks.md のみ**ステージし `dist/*` は含めない（最終検証時にまとめて再生成・反映を判断）。
+- 1.2→4.1 申し送り: OSM 出典は安全ビルダ経由で `<a href="https://www.openstreetmap.org/copyright" ...>OpenStreetMap contributors</a>` となり、既存初期スタイルの生文字列 `&copy; <a href="http://...">OpenStreetMap</a> contributors` から © グリフ脱落・http→https 昇格。Req 3.1 明示スコープ（contributors＋リンク）は充足だが、task 4.1 で初期スタイル `osm.attribution` との実整合時に OSM ラベルへ `© `（リテラル文字）前置の要否を人手判断する。
+- 1.1: 既存 `main.js` は実際には **4 スペースインデント**（steering tech.md の「2 スペース」記述はこのファイルに不正確）。後続の main.js 変更は実ファイルの 4 スペースに合わせる。`buildAttribution` は imports と `const map = new maplibregl.Map(` の間（main.js 18–55 付近）に純関数として追加済み。検証は自動テスト基盤なしのため `npm run build` ＋ `node -e` ad-hoc 実行（一時ファイル/ログを残さない）。

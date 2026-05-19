@@ -54,6 +54,103 @@ function buildAttribution(attr) {
     return `<a href="${url}" target="_blank" rel="noopener">${label}</a>`;
 }
 
+/**
+ * 背景地図エントリ（4種背景の単一情報源）。
+ * @typedef {Object} BasemapDef
+ * @property {'osm'|'gsi_std'|'gsi_seamlessphoto'|'gsi_blank'} id 背景地図ID（ドメイン接頭辞付き）
+ * @property {string} label  コントロール表示用の日本語ラベル
+ * @property {object} source MapLibre raster source 定義（tiles, tileSize, minzoom, maxzoom）
+ * @property {string} attribution buildAttribution で構築済みの出典文字列
+ */
+
+/**
+ * 背景地図レジストリ（設定 as データ）。
+ *
+ * OSM・地理院地図(標準)・航空写真・白地図の4種を単一情報源として宣言する。
+ * 各エントリの source は Style Spec v8 の raster source 定義で、ズーム範囲・
+ * 画像形式差（.jpg/.png）を per-source に保持して表示欠陥を吸収する
+ * （Req 2.1/2.2/2.3/2.4）。出典は開発者が定義する信頼定数 {label,url} のみを
+ * buildAttribution に通して構築し、利用者入力・外部由来データを補間しない
+ * （Req 3.1/3.2/4.1）。osm エントリは初期スタイルの既存 osm source と同一値
+ * （tiles/tileSize/maxzoom）で、起動時の既定＝OSM・現行挙動を維持する
+ * （Req 1.6。初期スタイルへの実結線は task 4.1 の責務）。
+ *
+ * @type {ReadonlyArray<BasemapDef>}
+ */
+const BASEMAPS = [
+    {
+        // OSM（既定）。初期スタイルの既存 osm source と同一値を踏襲（Req 1.6）。
+        id: 'osm',
+        label: 'OpenStreetMap',
+        source: {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            maxzoom: 19,
+            tileSize: 256,
+        },
+        // 既存 osm 出典（OpenStreetMap contributors ＋ 著作権リンク）を
+        // ラベル/URL 分離の信頼定数として buildAttribution 経由で構築（Req 3.1）。
+        attribution: buildAttribution({
+            label: 'OpenStreetMap contributors',
+            url: 'https://www.openstreetmap.org/copyright',
+        }),
+    },
+    {
+        // 地理院地図(標準): PNG z0–18（research.md GSI std）。
+        id: 'gsi_std',
+        label: '地理院地図(標準)',
+        source: {
+            type: 'raster',
+            tiles: ['https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            minzoom: 0,
+            maxzoom: 18,
+        },
+        attribution: buildAttribution({
+            label: '出典：国土地理院ウェブサイト',
+            url: 'https://maps.gsi.go.jp/development/ichiran.html',
+        }),
+    },
+    {
+        // 航空写真: JPEG z2–18。タイル画像形式が .jpg のため欠落させない
+        // よう拡張子を保持（Req 2.1。research.md GSI seamlessphoto）。
+        id: 'gsi_seamlessphoto',
+        label: '航空写真',
+        source: {
+            type: 'raster',
+            tiles: [
+                'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+            ],
+            tileSize: 256,
+            minzoom: 2,
+            maxzoom: 18,
+        },
+        attribution: buildAttribution({
+            label: '出典：国土地理院ウェブサイト',
+            url: 'https://maps.gsi.go.jp/development/ichiran.html',
+        }),
+    },
+    {
+        // 白地図: PNG z5–14・日本域のみ。maxzoom:14 で z>14 を overzoom
+        // させ空白埋め尽くしを回避（Req 2.2/2.3。research.md GSI blank）。
+        id: 'gsi_blank',
+        label: '白地図',
+        source: {
+            type: 'raster',
+            tiles: [
+                'https://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png',
+            ],
+            tileSize: 256,
+            minzoom: 5,
+            maxzoom: 14,
+        },
+        attribution: buildAttribution({
+            label: '出典：国土地理院ウェブサイト',
+            url: 'https://maps.gsi.go.jp/development/ichiran.html',
+        }),
+    },
+];
+
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
     zoom: 5, // 初期表示のズーム
