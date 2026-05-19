@@ -45,7 +45,7 @@
   - _Boundary: style.css presentation_
 
 - [ ] 4. Integration: 初期スタイル整合と load 登録への結線
-- [ ] 4.1 初期スタイル整合とコントロール登録
+- [x] 4.1 初期スタイル整合とコントロール登録
   - 初期スタイルの `osm` を BASEMAPS の OSM エントリと一貫させ（起動時の既定＝OSM、初期中心/ズーム/操作は現行維持）、`map.on('load')` 内の既存 addControl 群と同所に `map.addControl(new BasemapSwitcherControl(), 'bottom-left')` を登録する
   - 既存 OpacityControl（左上/右上）・Geolocate/Terrain（右下）の登録・位置を変更しない。`public/*`・`index.html`・ビルド設定は変更しない（PWA 既存挙動を維持）
   - 観測可能な完了: アプリ起動時に背景が OSM、左下に切替コントロールが表示され、既存コントロールの位置・挙動が不変

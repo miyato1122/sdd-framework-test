@@ -374,14 +374,17 @@ const map = new maplibregl.Map({
     style: {
         version: 8,
         sources: {
-            // 背景地図ソース
+            // 背景地図ソース（既定＝OSM）。
+            // 初期スタイルの osm source を BASEMAPS の osm エントリと一貫させ、
+            // 初回レンダリングと切替後レンダリングを同一にする（Req 1.6/3.3）。
+            // tiles/tileSize/maxzoom は BASEMAPS[].source、attribution は
+            // BASEMAPS[].attribution（buildAttribution 経由の安全な出典）から
+            // 取り、ハードコード literal は持たない（Req 3.1 は BASEMAPS 形で充足）。
+            // BASEMAPS / buildAttribution は上方で宣言済みのため参照は有効
+            // （map 構築は const 宣言の後に実行され TDZ 非該当）。
             osm: {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                maxzoom: 19,
-                tileSize: 256,
-                attribution:
-                    '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                ...BASEMAPS.find((b) => b.id === 'osm').source,
+                attribution: BASEMAPS.find((b) => b.id === 'osm').attribution,
             },
             // 重ねるハザードマップここから
             hazard_flood: {
@@ -805,6 +808,13 @@ map.on('load', () => {
         },
     });
     map.addControl(opacitySkhb, 'top-right');
+
+    // 背景地図切替コントロール（既存 addControl 群と同所・map.on('load') 内）。
+    // 地図左下に排他選択 UI を登録する（Req 1.1）。既存 OpacityControl
+    // （左上/右上）・Geolocate/Terrain（右下）の登録・位置・挙動は変更しない
+    // （Req 5.3）。getDefaultPosition も 'bottom-left' だが addControl 第2引数
+    // でも明示する。
+    map.addControl(new BasemapSwitcherControl(), 'bottom-left');
 
     // 地図上をクリックした際のイベント
     map.on('click', (e) => {
