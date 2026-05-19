@@ -18,7 +18,7 @@
   - _Depends: 1.1_
 
 - [ ] 2. Core: 背景切替ロジック
-- [ ] 2.1 背景切替関数 setBasemap の実装
+- [x] 2.1 背景切替関数 setBasemap の実装
   - 現アクティブ背景の layer を removeLayer、source を removeSource し、選択された source を addSource、`hazard_flood-layer` を beforeId に addLayer して常に最下（重畳より下）へ挿入する
   - 同一 id の再選択および BASEMAPS に無い id は no-op（不要な再生成・破壊を回避）
   - 背景以外（hazard_* / skhb / route / hillshade / 既存コントロール）に一切触れない
@@ -66,6 +66,7 @@
   - _Depends: 5.1, 3.2_
 
 ## Implementation Notes
+- 2.1: main.js のブロックコメント／JSDoc 内に `hazard_*/skhb` のような **`*/` リテラルを書かない**（コメントが早期クローズしビルド構文エラー）。`hazard_ 各種` 等に言い換える。後続 3.1/4.1 の日本語コメント追記時も注意。`setBasemap` は hoisted 宣言で後方の `const map` を参照するが、呼出は実行時（3.1/4.1）のみで TDZ 非該当。
 - 環境: subagent 追加利用枠が断続的に枯渇（リセット 17:20 Asia/Tokyo）。枯渇時は reviewer-prompt 許可のフォールバックでメインコンテキストにて kiro-review 手順を完全適用してレビューする（チェックを弱めない）。
 - dist 方針: `npm run build` 実行で `dist/*` が再生成され git diff に出るが、これは検証生成物。per-task コミットには **source＋tasks.md のみ**ステージし `dist/*` は含めない（最終検証時にまとめて再生成・反映を判断）。
 - 1.2→4.1 申し送り: OSM 出典は安全ビルダ経由で `<a href="https://www.openstreetmap.org/copyright" ...>OpenStreetMap contributors</a>` となり、既存初期スタイルの生文字列 `&copy; <a href="http://...">OpenStreetMap</a> contributors` から © グリフ脱落・http→https 昇格。Req 3.1 明示スコープ（contributors＋リンク）は充足だが、task 4.1 で初期スタイル `osm.attribution` との実整合時に OSM ラベルへ `© `（リテラル文字）前置の要否を人手判断する。

@@ -151,6 +151,72 @@ const BASEMAPS = [
     },
 ];
 
+/**
+ * 現在アクティブな背景地図 id（実行時状態は唯一これのみ）。
+ *
+ * 初期スタイルは既存の osm source / osm-layer を持つため、起動時の
+ * アクティブ背景は 'osm' とみなす（Req 1.6。初期スタイルへの実結線・
+ * 整合は task 4.1 の責務であり、ここでは初期スタイルを改変しない）。
+ *
+ * @type {BasemapDef['id']}
+ */
+let currentBasemapId = 'osm';
+
+/**
+ * 背景地図を切り替える（アクティブ背景を常に単一・最下に保つ）。
+ *
+ * 選択された id を BASEMAPS から引き、現アクティブ背景の layer→source を
+ * remove してから選択 source を addSource し、`hazard_flood-layer` を
+ * beforeId に addLayer して常に重畳より下（最下）へ挿入する（Req 1.3/
+ * 1.4/5.4）。source id は背景 id（例 `osm`/`gsi_std`）、layer id は
+ * `<id>-layer`（例 `osm-layer`）で既存初期スタイルの命名と一貫させる。
+ *
+ * 同一 id の再選択、および BASEMAPS に存在しない id は no-op として
+ * 何も変更せず返る（不要な再生成・防御的無効 id 回避）。
+ *
+ * 選択 source の `attribution` は BASEMAPS で buildAttribution 経由に
+ * 構築済みで、未使用となった旧背景 source を除去することで MapLibre
+ * 既定 AttributionControl が当該背景＋重畳のみへ自動更新される
+ * （Req 3.3）。重畳（hazard_ 各種・skhb・route・hillshade）・既存
+ * コントロールには一切触れない（Req 3.4/5.1/5.2）。タイル取得失敗は MapLibre が
+ * タイル単位で許容し致命化しないため、本関数に追加のエラーハンドリング
+ * を設けない（Req 2.5。設計上の非致命を維持）。
+ *
+ * @param {BasemapDef['id']} id 選択された背景地図 id
+ * @returns {void}
+ */
+function setBasemap(id) {
+    // 防御的: BASEMAPS に無い id は no-op（既存背景を維持）
+    const entry = BASEMAPS.find((b) => b.id === id);
+    if (!entry) return;
+    // 同一 id の再選択は no-op（不要な source/layer 再生成を回避）
+    if (id === currentBasemapId) return;
+
+    // 旧アクティブ背景の layer→source を remove（過渡的に背景 0 個）。
+    // source/layer 命名は初期スタイル（source `osm` / layer `osm-layer`）
+    // と一貫させる: source id = 背景 id、layer id = `<id>-layer`。
+    const prevLayerId = `${currentBasemapId}-layer`;
+    const prevSourceId = currentBasemapId;
+    map.removeLayer(prevLayerId);
+    map.removeSource(prevSourceId);
+
+    // 選択 source を add（attribution は BASEMAPS に内包済み＝出典追従）。
+    map.addSource(id, entry.source);
+    // 背景は常に最下: 初期スタイル常駐の `hazard_flood-layer` を beforeId
+    // に指定し重畳（hazard_ 各種・route・skhb）より下へ挿入する（Req 5.4）。
+    map.addLayer(
+        {
+            id: `${id}-layer`,
+            source: id,
+            type: 'raster',
+        },
+        'hazard_flood-layer',
+    );
+
+    // アクティブ id を更新（実行時状態の唯一の真実）
+    currentBasemapId = id;
+}
+
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
     zoom: 5, // 初期表示のズーム
