@@ -34,7 +34,7 @@
   - _Requirements: 1.1, 1.4_
   - _Boundary: Dependency Set_
 
-- [ ] 2.2 クリーン環境で lockfile を再生成し再現性を確認
+- [x] 2.2 クリーン環境で lockfile を再生成し再現性を確認
   - 1.2 で確立したクリーン環境で install し、`package-lock.json` を再生成する
   - 目標版がクリーン環境で同一再現することを確認する。いずれか解決不能なら依存名と理由を記録し不合格とする
   - 完了状態: 再生成された `package-lock.json` がクリーン環境で目標版を同一再現する、または解決不能依存と理由が記録され不合格判定されている
@@ -85,3 +85,4 @@
 
 ## Implementation Notes
 - 1.2: `npm run build`/`npm run preview` は追跡対象の `dist/`（Windows では CRLF 差分で ` M dist/index.html`）を再生成する。クリーン環境再現は `dist/` に触れない `npm ci` を用いる。Task 3.1 は正規にビルドするため、`dist/` 再生成を意図的に扱い（コミット対象に含めるか、probe 用途なら path-scoped `git checkout -- dist/` で復元）、破壊的な `git checkout .` / `git reset --hard` は使わないこと。
+- 2.2: クリーン再インストール時、旧 vite3 由来の残留 esbuild サービスデーモン（zombie PID）が `node_modules\.esbuild-*\esbuild.exe` をロックし `npm warn cleanup EPERM` を起こすことがある。これが Windows ファイルロックの実体。Task 3.1 で `npm run build`（vite8/esbuild 新版）実行前に、残留 esbuild プロセスを診断・終了してから実行すること。lockfile は `npm ci` で hash 不変・byte 同一再現を確認済み（偽green ガード済み）。
