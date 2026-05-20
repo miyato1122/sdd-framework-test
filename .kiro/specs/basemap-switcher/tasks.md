@@ -201,7 +201,7 @@
   - _Boundary: BasemapSwitcherControl_
   - _Depends: 8.1, 8.2_
 
-- [ ] 12.2 BasemapFormDialog edit モードの実装
+- [x] 12.2 BasemapFormDialog edit モードの実装
   - `open({mode:'edit', entry})` で `entry`（`NormalizedCustomBasemapInput` 相当＋`id`）をフォームに pre-fill、タイトルと submit ラベルを編集用に切替
   - submit 成功時は `updateCustomBasemap(id, normalized)` → `saveCustomBasemaps(...)`。失敗時は add と同様に dialog 内 `aria-live` 警告＋ダイアログ open 継続
   - 成功時のみ `Switcher.renderList()` → `dialog.close()`

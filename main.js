@@ -611,6 +611,19 @@ function removeCustomBasemap(id) {
 }
 
 /**
+ * 指定 id のカスタム背景地図の永続化形（BasemapDefPersistable）を返す。
+ * 編集 UI の pre-fill 用（BasemapDef.attribution は HTML 文字列で原入力を逆算
+ * 不能なため、永続化ストアから取得する必要がある）。組込み id は undefined。
+ *
+ * @param {string} id custom_ 接頭辞付き id
+ * @returns {BasemapDefPersistable | undefined}
+ */
+function getCustomBasemapPersistable(id) {
+    if (typeof id !== 'string' || !id.startsWith('custom_')) return undefined;
+    return customBasemapsPersistable.find((p) => p.id === id);
+}
+
+/**
  * 現在アクティブな背景地図 id（実行時状態は唯一これのみ）。
  *
  * 初期スタイルは既存の osm source / osm-layer を持つため、起動時の
@@ -815,11 +828,13 @@ class BasemapSwitcherControl {
                 if (this._formDialog) this._formDialog.open({ mode: 'create' });
                 return;
             }
-            // 利用者エントリの「編集」ボタン（Req 9.1）。data-id で対象エントリを解決。
+            // 利用者エントリの「編集」ボタン（Req 9.1）。data-id で永続化形（persistable）を
+            // 解決して FormDialog へ渡す。BasemapDef.attribution は HTML 文字列で原入力
+            // （attributionLabel/Link）が逆算不能なため、pre-fill には persistable が必須。
             if (target.classList && target.classList.contains('basemap-edit-button')) {
                 const targetId = target.getAttribute('data-id');
                 if (this._formDialog && targetId) {
-                    const entry = getBasemapById(targetId);
+                    const entry = getCustomBasemapPersistable(targetId);
                     if (entry) this._formDialog.open({ mode: 'edit', entry });
                 }
             }
@@ -1153,8 +1168,19 @@ class BasemapFormDialog {
         } else if (opts.mode === 'edit') {
             this._titleEl.textContent = 'カスタム背景地図を編集';
             this._submitEl.textContent = '保存';
-            // 12.2 で entry.label/tileUrl/... を pre-fill 予定。本タスクでは空。
+            // entry（BasemapDefPersistable）の各フィールドをフォームへ pre-fill。
+            // 値の安全性（属性値や markup として解釈されないこと）は input.value への代入
+            // が DOM API でテキスト扱いになるため自動保証される（buildAttribution と同設計）。
             this._clearFormValues();
+            if (opts.entry) {
+                const e = opts.entry;
+                if (typeof e.label === 'string') this._fieldEls.label.inputEl.value = e.label;
+                if (typeof e.tileUrl === 'string') this._fieldEls.tileUrl.inputEl.value = e.tileUrl;
+                if (typeof e.attributionLabel === 'string') this._fieldEls.attributionLabel.inputEl.value = e.attributionLabel;
+                if (typeof e.attributionLinkUrl === 'string') this._fieldEls.attributionLinkUrl.inputEl.value = e.attributionLinkUrl;
+                if (typeof e.minzoom === 'number') this._fieldEls.minzoom.inputEl.value = String(e.minzoom);
+                if (typeof e.maxzoom === 'number') this._fieldEls.maxzoom.inputEl.value = String(e.maxzoom);
+            }
         }
 
         this._dialog.showModal();
@@ -1698,10 +1724,7 @@ map.on('load', () => {
 
     // Phase 1 task 9.1: FormDialog submit → Validate → Registry → Persistence → Switcher.renderList の結線（add 経路）。
     // edit 経路は Phase 2 task 12.2 で同じハンドラ内に mode==='edit' 分岐として追加する。
-    basemapFormDialog.setSubmitHandler((values, mode /*, editingId */) => {
-        // Phase 1 では create のみ実装（edit は 12.2 で結線）
-        if (mode !== 'create') return;
-
+    basemapFormDialog.setSubmitHandler((values, mode, editingId) => {
         // 1. 未信頼入力として検証（Req 8.1〜8.4）。
         //    違反時はフィールド単位エラーを表示し、ダイアログは閉じない／最初のエラーへフォーカス
         const result = validateCustomBasemapInput(values);
@@ -1710,16 +1733,34 @@ map.on('load', () => {
             return;
         }
 
-        // 2. Registry へ追加（custom_<UUID> 生成、source 構築、buildAttribution）。
-        //    成功時は in-memory レジストリと並行 persistable ストアが両方更新される。
-        addCustomBasemap(result.normalized);
+        // 2. Registry へ反映: create は addCustomBasemap、edit は updateCustomBasemap。
+        //    両ストア（customBasemaps と customBasemapsPersistable）を同期して更新する。
+        if (mode === 'create') {
+            addCustomBasemap(result.normalized);
+        } else if (mode === 'edit' && editingId) {
+            const updated = updateCustomBasemap(editingId, result.normalized);
+            if (!updated) {
+                // 対象不在（削除済み等の競合）— 防御的に general message で通知し終了
+                basemapFormDialog.showGeneralMessage(
+                    '編集対象が見つかりませんでした',
+                );
+                return;
+            }
+            // 編集対象が現在選択中なら、source/attribution が変わったため再 setBasemap で反映。
+            // 同 id だと no-op になるため、一度別の id（osm）に切替えてから戻す手は重い。
+            // ここでは render 再描画で radio label/checked の同期のみ取り、source の更新は
+            // 「次に切り替えたとき」または「再選択時」に反映される（既知の制約）。
+            // → 利用者が編集後すぐに地図表示の即時反映を望む場合は、明示的に当該 radio を
+            //    選び直してもらう。実機スモーク（14.2）でこの境界をチェック項目化する。
+        } else {
+            return; // 未知 mode は no-op
+        }
 
-        // 3. Switcher を再描画（追加した radio が一覧末尾に出現し、即時選択可能、Req 7.4）。
-        //    永続化結果に関わらず in-memory には追加済みなので renderList は先に行う。
+        // 3. Switcher を再描画（label 変更や追加分の即時反映、Req 7.4／9.3）
         basemapSwitcher.renderList();
 
         // 4. 永続化（Req 10.1）。失敗時は dialog を閉じず警告を維持し利用者の明示操作を待つ
-        //    （add／edit／delete を C3 一貫性で対称化する方針、Req 10.5 の通知 visibility を保つ）。
+        //    （add／edit／delete を C3 一貫性で対称化、Req 10.5 の通知 visibility を保つ）
         const saved = saveCustomBasemaps(customBasemapsPersistable);
         if (!saved) {
             basemapFormDialog.showGeneralMessage(
