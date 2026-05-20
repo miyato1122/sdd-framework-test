@@ -139,7 +139,7 @@
   - _Boundary: BasemapFormDialog_
   - _Depends: 8.2_
 
-- [ ] 8.4 (P) 切替コントロール追加行と dialog の最小スタイル
+- [x] 8.4 (P) 切替コントロール追加行と dialog の最小スタイル
   - `style.css` に `.basemap-switcher .basemap-add-row > button` と `dialog.basemap-form-dialog`（form／label／input／submit／cancel／error 領域）の最小スタイルを追加。既存色味と調和、レスポンシブ崩れなし、地図操作を妨げない
   - 観測可能な完了: 追加ボタンと dialog が視覚的に既存コントロールと調和し、フォームの label／input が読みやすく整列する
   - _Requirements: 6.4_
