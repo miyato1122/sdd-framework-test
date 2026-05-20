@@ -81,7 +81,7 @@
   - _Requirements: 4.4, 8.1, 8.2, 8.3, 8.4, 10.4_
   - _Boundary: Validate_
 
-- [ ] 6.3 永続化（カスタム定義側）helper の実装
+- [x] 6.3 永続化（カスタム定義側）helper の実装
   - `loadCustomBasemaps()`／`saveCustomBasemaps(items)` を実装。キー `basemap-switcher:v1:customs`、値は `{ version: 1, items: BasemapDefPersistable[] }` の JSON
   - 例外（`QuotaExceededError`／`SecurityError`／無効 JSON／version 不一致）は捕捉して読込は `[]`、保存は `false` を返す（fail-closed）。`fetch`／`sendBeacon` 等の外部送信 API は一切呼ばない（Req 10.3）
   - 観測可能な完了: storage 利用不可（無効 JSON 注入・disabled localStorage 模擬）で load は `[]`、save は `false` を返し例外が外へ漏れない／成功時に round-trip で同 JSON が読み戻せる

@@ -205,6 +205,70 @@ function validateCustomBasemapInput(input) {
 }
 
 /**
+ * 永続化可能なカスタム背景地図定義（フォーム入力相当の保存形）。
+ * source.attribution の組み立て結果は保存せず、毎起動時に buildAttribution で再構築する
+ * （安全構築規則の一元化、Req 4.2／10.4 整合）。
+ * @typedef {Object} BasemapDefPersistable
+ * @property {string} id                     custom_ 接頭辞付き UUID
+ * @property {string} label
+ * @property {string} tileUrl
+ * @property {string} attributionLabel
+ * @property {string} [attributionLinkUrl]
+ * @property {number} [minzoom]
+ * @property {number} [maxzoom]
+ */
+
+/** localStorage キー（version 接頭辞付き、スキーマ進化時に上げる）。 */
+const STORAGE_KEY_CUSTOMS = 'basemap-switcher:v1:customs';
+
+/**
+ * 永続化されたカスタム背景地図定義を読み込む（fail-closed）。
+ *
+ * localStorage 利用不可（typeof undefined・SecurityError）／読込時例外／
+ * JSON 解析失敗／version 不一致／items が配列でない、のいずれでも空配列
+ * を返し例外を呼び出し元に漏らさない（Req 10.5）。外部送信は行わない
+ * （Req 10.3）。返り値の各 item は信頼できない値として扱うべきで、利用前
+ * に validateCustomBasemapInput で再検証する必要がある（Req 10.4）。
+ *
+ * @returns {BasemapDefPersistable[]}  失敗時は []
+ */
+function loadCustomBasemaps() {
+    try {
+        if (typeof localStorage === 'undefined') return [];
+        const raw = localStorage.getItem(STORAGE_KEY_CUSTOMS);
+        if (raw === null) return [];
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return [];
+        if (parsed.version !== 1) return [];
+        if (!Array.isArray(parsed.items)) return [];
+        return parsed.items;
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * カスタム背景地図定義を永続化する（fail-closed）。
+ *
+ * QuotaExceededError／SecurityError／serialize 失敗のいずれでも false を
+ * 返し例外を呼び出し元に漏らさない（Req 10.5）。外部送信は行わない
+ * （Req 10.3）。version: 1 包絡で書き込む（10.4 復元時の version 一致前提）。
+ *
+ * @param {BasemapDefPersistable[]} items
+ * @returns {boolean}  保存成功
+ */
+function saveCustomBasemaps(items) {
+    try {
+        if (typeof localStorage === 'undefined') return false;
+        const payload = JSON.stringify({ version: 1, items });
+        localStorage.setItem(STORAGE_KEY_CUSTOMS, payload);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * 背景地図エントリ（4種背景の単一情報源）。
  * @typedef {Object} BasemapDef
  * @property {'osm'|'gsi_std'|'gsi_seamlessphoto'|'gsi_blank'} id 背景地図ID（ドメイン接頭辞付き）
