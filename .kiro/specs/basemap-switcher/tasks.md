@@ -96,7 +96,7 @@
   - _Requirements: 1.2, 1.6, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 4.1_
   - _Boundary: BUILTIN_BASEMAPS_
 
-- [ ] 7.2 Registry Phase 1 関数群（getAllBasemaps／getBasemapById／addCustomBasemap）
+- [x] 7.2 Registry Phase 1 関数群（getAllBasemaps／getBasemapById／addCustomBasemap）
   - モジュールスコープ `let customBasemaps = []` を導入。`getAllBasemaps()` は `[...BUILTIN_BASEMAPS, ...customBasemaps]`、`getBasemapById(id)` は両層から検索して該当エントリを返す
   - `addCustomBasemap(def)` は `crypto.randomUUID()` で id を生成し `custom_<UUID>` を付与、`buildAttribution({label: def.attributionLabel, url: def.attributionLinkUrl})` で `attribution` を内部構成、`source` は `{type:'raster', tiles:[def.tileUrl], tileSize:256, minzoom?, maxzoom?}` で組み立てた `BasemapDef` を `customBasemaps` 末尾に追加して返す
   - 観測可能な完了: 新規 def を `addCustomBasemap` に渡すと `getAllBasemaps()` 末尾に追加され `getBasemapById(returned.id)` で取得できる／既存 BUILTIN 4 種への影響なし

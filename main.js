@@ -366,6 +366,72 @@ const BUILTIN_BASEMAPS = Object.freeze([
 ]);
 
 /**
+ * 利用者が追加したカスタム背景地図のレジストリ（実行時可変）。
+ * 起動時は空配列で、Phase 2 の restoreOnLoad（task 13.1）で永続化値から復元される。
+ * 末尾追加・編集（id 保持の差し替え）・削除（id 一致除去）の対象。
+ *
+ * @type {BasemapDef[]}
+ */
+let customBasemaps = [];
+
+/**
+ * 組込み（不変）と利用者追加（可変）のレジストリを結合して返す。
+ *
+ * 順序は「組込みが先（BUILTIN_BASEMAPS の順）、利用者追加が後（追加順）」。
+ * 返り値は呼び出しごとに新しい配列で、呼び出し側で長期保持しないこと
+ * （Registry 変動後に再取得する設計、design Registry セクション）。
+ *
+ * @returns {ReadonlyArray<BasemapDef>}
+ */
+function getAllBasemaps() {
+    return [...BUILTIN_BASEMAPS, ...customBasemaps];
+}
+
+/**
+ * 指定 id に該当する背景地図エントリを組込み／利用者双方から検索する。
+ *
+ * @param {string} id  背景地図 id（'osm'/'gsi_*' または 'custom_<UUID>'）
+ * @returns {BasemapDef | undefined}  該当なしは undefined
+ */
+function getBasemapById(id) {
+    return getAllBasemaps().find((b) => b.id === id);
+}
+
+/**
+ * カスタム背景地図を新規追加する（id を内部生成して採用）。
+ *
+ * crypto.randomUUID で UUID を生成し 'custom_' 接頭辞を付与して BUILTIN id
+ * 空間と分離する。source は raster spec に組み立て、attribution は
+ * buildAttribution 経由で安全構築する（利用者入力を DOM API 経由で
+ * エスケープ・Req 4.2／4.5 整合）。customBasemaps の末尾に追加する
+ * （新規追加は表示順末尾、Req 7.4）。
+ *
+ * 起動時の復元（保存済み id を採用）は addRestoredCustomBasemap
+ * （task 11.1 で追加）の責務であり、本関数は新規追加専用。
+ *
+ * @param {NormalizedCustomBasemapInput} def  validate 通過済み正規化値（id 含まない）
+ * @returns {BasemapDef}  生成された custom_<UUID> 付きエントリ
+ */
+function addCustomBasemap(def) {
+    const id = 'custom_' + crypto.randomUUID();
+    const source = {
+        type: 'raster',
+        tiles: [def.tileUrl],
+        tileSize: 256,
+    };
+    if (typeof def.minzoom === 'number') source.minzoom = def.minzoom;
+    if (typeof def.maxzoom === 'number') source.maxzoom = def.maxzoom;
+    const attribution = buildAttribution({
+        label: def.attributionLabel,
+        url: def.attributionLinkUrl,
+    });
+    /** @type {BasemapDef} */
+    const entry = { id, label: def.label, source, attribution };
+    customBasemaps.push(entry);
+    return entry;
+}
+
+/**
  * 現在アクティブな背景地図 id（実行時状態は唯一これのみ）。
  *
  * 初期スタイルは既存の osm source / osm-layer を持つため、起動時の
