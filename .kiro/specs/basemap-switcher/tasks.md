@@ -185,7 +185,7 @@
   - _Requirements: 10.6, 10.7_
   - _Boundary: Persistence (selectedId)_
 
-- [ ] 11.3 setBasemap の opts.persist 結線
+- [x] 11.3 setBasemap の opts.persist 結線
   - 7.3 で signature だけ追加した `opts.persist`（既定 `true`）を実結線。`true` のとき `saveSelectedBasemapId(id)` を呼ぶ、`false` のとき呼ばない（復元経路向け）
   - 観測可能な完了: `setBasemap(id)` 呼出後に `loadSelectedBasemapId()` が当該 id を返す／`setBasemap(id, {persist:false})` ではストレージが変化しない
   - _Requirements: 10.6_

@@ -657,8 +657,10 @@ function setBasemap(id, opts) {
     if (!entry) return;
     // 同一 id の再選択は no-op（不要な source/layer 再生成を回避）
     if (id === currentBasemapId) return;
-    // opts.persist の既定 true / 引数受理（実結線は task 11.3）
-    void (opts && opts.persist === false);
+    // opts.persist は既定 true。明示的に false（restoreOnLoad 経由）でなければ
+    // saveSelectedBasemapId を呼んで利用者選択を永続化する（Req 10.6）。
+    // 保存失敗は無視（地図表示・既存機能をクラッシュさせない、fail-closed）。
+    const shouldPersist = !(opts && opts.persist === false);
 
     // 旧アクティブ背景の layer→source を remove（過渡的に背景 0 個）。
     // source/layer 命名は初期スタイル（source `osm` / layer `osm-layer`）
@@ -686,6 +688,11 @@ function setBasemap(id, opts) {
 
     // アクティブ id を更新（実行時状態の唯一の真実）
     currentBasemapId = id;
+
+    // 選択を永続化（restoreOnLoad 経由は shouldPersist=false で再保存ループ回避）
+    if (shouldPersist) {
+        saveSelectedBasemapId(id);
+    }
 }
 
 /**
