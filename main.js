@@ -538,6 +538,11 @@ class BasemapSwitcherControl {
          */
         this._container = null;
         /**
+         * fieldset 参照（renderList が動的部分のみクリア／再構築するために使用）。
+         * @type {HTMLFieldSetElement|null}
+         */
+        this._fieldset = null;
+        /**
          * change リスナ参照（onRemove で確実に解放しリークを防ぐ）。
          * @type {((e: Event) => void)|null}
          */
@@ -547,13 +552,10 @@ class BasemapSwitcherControl {
     /**
      * コントロールの DOM を生成して返す（MapLibre IControl）。
      *
-     * `maplibregl-ctrl maplibregl-ctrl-group` ＋ feature class
-     * `basemap-switcher`（task 3.2 の CSS 標的）の div 内に、支援技術用
-     * 見出しの `<legend>` を持つ `<fieldset>` を作り、BUILTIN_BASEMAPS の各
-     * エントリぶん `name="basemap"` の radio ＋ 対応 `<label for>` を
-     * 生成する。currentBasemapId（既定 'osm'）に一致する radio を
-     * checked にして現在選択を明示する（Req 1.2/1.5/1.6/6.2/6.3）。
-     * radio の change で setBasemap(selectedId) を呼ぶ（Req 1.3/1.4）。
+     * 静的構造（コンテナ＋fieldset＋legend＋change リスナ）を一度だけ構築し、
+     * 動的部分（各エントリの radio + label 行、Phase 2 で末尾 add ボタンや
+     * 利用者エントリの edit ボタン）の生成は renderList() に委譲する。
+     * 初回 onAdd 時に renderList() を呼んで現在のレジストリ状態を反映する。
      *
      * @param {maplibregl.Map} _map MapLibre Map（本コントロールは Map API を直接使わず setBasemap 経由のため未使用）
      * @returns {HTMLElement} コントロールのルート要素
@@ -570,7 +572,11 @@ class BasemapSwitcherControl {
         legend.textContent = '背景地図';
         fieldset.appendChild(legend);
 
-        // change はグループ内のどの radio でも単一ハンドラで受ける
+        // change ハンドラはグループ内のどの radio でも単一でデリゲーション受信。
+        // 設計レビュー C2 対応: setBasemap を呼ぶだけで renderList() は呼ばない
+        // （ネイティブ radio の name="basemap" グループによる相互排他で checked
+        // は自動同期される。renderList を呼ぶと矢印キー移動中のフォーカスが
+        // 消失するため、レジストリ変動時のみに renderList を限定する）
         this._onChange = (e) => {
             const target = e.target;
             // basemap グループの radio 以外は無視（防御的）
@@ -581,13 +587,49 @@ class BasemapSwitcherControl {
             ) {
                 return;
             }
-            // 選択された背景 id を setBasemap へ結線（単一性は setBasemap が担保）
+            // 選択された背景 id を setBasemap へ結線（単一性は setBasemap が担保）。
+            // ネイティブ radio の相互排他で当該 input の checked は自動的に true、
+            // 他は false になる — JS から明示的に checked を設定する必要はない。
             setBasemap(target.value);
         };
         fieldset.addEventListener('change', this._onChange);
 
-        // BUILTIN_BASEMAPS の各エントリを radio ＋ label として安全な DOM API で構築
-        BUILTIN_BASEMAPS.forEach((entry) => {
+        container.appendChild(fieldset);
+        this._container = container;
+        this._fieldset = fieldset;
+
+        // 動的部分（各エントリ）の初回構築
+        this.renderList();
+        return container;
+    }
+
+    /**
+     * fieldset 内の動的部分（各 .basemap-option 行および Phase 2 で追加される
+     * .basemap-add-row／.basemap-edit-button）を一度クリアし、現在の
+     * getAllBasemaps() に基づいて radio + label を再構築する。
+     *
+     * 呼び出し条件: レジストリ変動時のみ（add／edit／delete／restoreOnLoad
+     * 完了後／削除に伴う選択フォールバック後）。利用者の `change` 操作経路では
+     * 呼ばない — 上記 onAdd の change ハンドラ参照（C2 対応の局所更新方針）。
+     *
+     * これにより Req 6.1（キーボード操作）・6.3（選択状態の支援技術提示）の
+     * 連続操作中のフォーカス保持を保証する。
+     *
+     * @returns {void}
+     */
+    renderList() {
+        if (!this._fieldset) return;
+        // legend のみ残し、それ以外の子（既存の .basemap-option 行など動的部分）を除去
+        const legend = this._fieldset.querySelector('legend');
+        while (this._fieldset.lastChild && this._fieldset.lastChild !== legend) {
+            this._fieldset.removeChild(this._fieldset.lastChild);
+        }
+
+        // getAllBasemaps() の各エントリを radio ＋ label として安全な DOM API で構築。
+        // 順序は組込みが先、利用者追加が後（getAllBasemaps の契約）。
+        // Phase 2 で 12.1 が利用者エントリへの編集ボタン併置を、8.2 が末尾の
+        // 追加ボタン行を追加するが、本タスク 8.1 は radio + label の再構築のみ。
+        getAllBasemaps().forEach((entry) => {
             const inputId = `basemap-option-${entry.id}`;
 
             const input = document.createElement('input');
@@ -595,32 +637,28 @@ class BasemapSwitcherControl {
             input.name = 'basemap';
             input.id = inputId;
             input.value = entry.id;
-            // 既定（currentBasemapId='osm'）に一致する radio を checked
-            // にして現在選択を明示（Req 1.5/1.6/6.3）
+            // currentBasemapId に一致する radio を checked にして現在選択を明示
+            // （Req 1.5/1.6/6.3）。再描画時も current を読み直すため、復元や
+            // フォールバック後の状態が正しく反映される。
             if (entry.id === currentBasemapId) {
                 input.checked = true;
             }
 
             // label[for] で radio と関連付け、支援技術が読み上げ可能な
-            // 識別ラベルを付与（Req 1.2/6.2）。テキストは textContent で
-            // 構築し innerHTML 経路にデータを渡さない（security.md）
+            // 識別ラベルを付与（Req 1.2/6.2）。テキストは textContent で構築し
+            // innerHTML 経路にデータを渡さない（security.md／利用者入力ラベルでも同様に安全）
             const label = document.createElement('label');
             label.htmlFor = inputId;
             label.textContent = entry.label;
 
-            // radio とラベルを 1 行（同一行）に収める行コンテナ。
-            // fieldset は CSS で縦並び、各行内は CSS .basemap-option で
-            // radio＋label を横並びにする（Req 1.2/6.4）
+            // radio とラベルを 1 行に収める行コンテナ
+            // （CSS .basemap-option で横並び・行内整列）
             const row = document.createElement('div');
             row.className = 'basemap-option';
             row.appendChild(input);
             row.appendChild(label);
-            fieldset.appendChild(row);
+            this._fieldset.appendChild(row);
         });
-
-        container.appendChild(fieldset);
-        this._container = container;
-        return container;
     }
 
     /**
@@ -633,11 +671,8 @@ class BasemapSwitcherControl {
     onRemove() {
         if (this._container) {
             // change リスナを確実に解放（fieldset 上に登録済み）
-            if (this._onChange) {
-                const fieldset = this._container.querySelector('fieldset');
-                if (fieldset) {
-                    fieldset.removeEventListener('change', this._onChange);
-                }
+            if (this._onChange && this._fieldset) {
+                this._fieldset.removeEventListener('change', this._onChange);
             }
             // DOM を親から切り離す
             if (this._container.parentNode) {
@@ -645,6 +680,7 @@ class BasemapSwitcherControl {
             }
         }
         this._container = null;
+        this._fieldset = null;
         this._onChange = null;
     }
 

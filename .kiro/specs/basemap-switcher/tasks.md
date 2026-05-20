@@ -113,7 +113,7 @@
   - _Depends: 7.2_
 
 - [ ] 8. Phase 1 Core UI: 切替コントロール拡張と追加フォーム骨格
-- [ ] 8.1 BasemapSwitcherControl への renderList 導入と change ハンドラの局所更新化
+- [x] 8.1 BasemapSwitcherControl への renderList 導入と change ハンドラの局所更新化
   - fieldset 内の動的部分を一度クリアして `getAllBasemaps()` を順に radio + label で再構築する `renderList()` を追加。`currentBasemapId` に一致する radio を checked にする
   - `change` デリゲーションハンドラは `setBasemap(value)` を呼んだ後、**該当 input の `.checked = true` のみ局所更新**して `renderList()` は呼ばない（矢印キー移動中のフォーカス喪失を回避、設計レビュー C2 対応）
   - `renderList()` の呼び出しはレジストリ変動時（add／edit／delete／restore 完了）と削除フォールバック時のみに限定する
