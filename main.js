@@ -1009,6 +1009,14 @@ class BasemapFormDialog {
          * @type {((values: Record<string, string>, mode: 'create'|'edit', editingId: string|null) => void) | null}
          */
         this._submitHandler = null;
+        /**
+         * 削除ハンドラ（12.3 で結線）。confirm 後に呼ばれ、registry remove→persist→
+         * setBasemap fallback→renderList→close-or-warn の choreography を担う。
+         * @type {((id: string) => void) | null}
+         */
+        this._deleteHandler = null;
+        this._deleteEl = null;
+        this._onDelete = null;
     }
 
     /**
@@ -1083,8 +1091,15 @@ class BasemapFormDialog {
         const cancelBtn = document.createElement('button');
         cancelBtn.type = 'button';
         cancelBtn.textContent = '取消';
+        // 削除ボタン: edit モード時のみ表示（mount 時点では非表示、open で切替）
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'basemap-form-delete';
+        deleteBtn.textContent = '削除';
+        deleteBtn.style.display = 'none';
         actions.appendChild(submitBtn);
         actions.appendChild(cancelBtn);
+        actions.appendChild(deleteBtn);
         form.appendChild(actions);
 
         dialog.appendChild(form);
@@ -1095,6 +1110,7 @@ class BasemapFormDialog {
         this._titleEl = title;
         this._submitEl = submitBtn;
         this._cancelEl = cancelBtn;
+        this._deleteEl = deleteBtn;
 
         // submit: form method=dialog は submit で dialog.close() を自動実行するが、
         // Phase 1 9.1 で値検証→add→persist の途中で close するか継続するかを制御するため
@@ -1117,6 +1133,19 @@ class BasemapFormDialog {
             this._dialog.close();
         };
         cancelBtn.addEventListener('click', this._onCancelBtn);
+
+        // 削除ボタン: 確認後に _deleteHandler を呼ぶ。ハンドラ未注入時は no-op。
+        // ハンドラ内で removeCustomBasemap→save→（選択中なら）setBasemap('osm')→
+        // renderList→close-or-warn の choreography を実行する（Req 9.4／9.5／10.5）。
+        this._onDelete = () => {
+            if (this._mode !== 'edit' || !this._editingId) return;
+            if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+                const ok = window.confirm('このカスタム背景地図を削除します。よろしいですか？');
+                if (!ok) return;
+            }
+            if (this._deleteHandler) this._deleteHandler(this._editingId);
+        };
+        deleteBtn.addEventListener('click', this._onDelete);
 
         // ESC: <dialog> 標準で 'cancel' イベント → close。値破棄を併用。
         this._onDialogCancel = () => {
@@ -1147,6 +1176,18 @@ class BasemapFormDialog {
     }
 
     /**
+     * 削除ハンドラを注入する（12.3 で結線）。
+     * 受け取った id（editingId）を元に removeCustomBasemap→save→必要なら
+     * setBasemap('osm') fallback→renderList→close-or-warn を担う。
+     *
+     * @param {(id: string) => void} handler
+     * @returns {void}
+     */
+    setDeleteHandler(handler) {
+        this._deleteHandler = handler;
+    }
+
+    /**
      * dialog を開く。
      * create: 空フォーム表示。edit: Phase 2 12.2 で pre-fill 実装（本タスクでは空表示）。
      * showModal で表示し最初の input にフォーカスする（Req 7.2／6.5）。
@@ -1164,10 +1205,13 @@ class BasemapFormDialog {
         if (opts.mode === 'create') {
             this._titleEl.textContent = 'カスタム背景地図を追加';
             this._submitEl.textContent = '保存';
+            if (this._deleteEl) this._deleteEl.style.display = 'none';
             this._clearFormValues();
         } else if (opts.mode === 'edit') {
             this._titleEl.textContent = 'カスタム背景地図を編集';
             this._submitEl.textContent = '保存';
+            // edit モード時のみ削除ボタンを表示（Req 9.1）
+            if (this._deleteEl) this._deleteEl.style.display = '';
             // entry（BasemapDefPersistable）の各フィールドをフォームへ pre-fill。
             // 値の安全性（属性値や markup として解釈されないこと）は input.value への代入
             // が DOM API でテキスト扱いになるため自動保証される（buildAttribution と同設計）。
@@ -1251,15 +1295,17 @@ class BasemapFormDialog {
         if (this._dialog) {
             if (this._onSubmit && this._form) this._form.removeEventListener('submit', this._onSubmit);
             if (this._onCancelBtn && this._cancelEl) this._cancelEl.removeEventListener('click', this._onCancelBtn);
+            if (this._onDelete && this._deleteEl) this._deleteEl.removeEventListener('click', this._onDelete);
             if (this._onDialogCancel) this._dialog.removeEventListener('cancel', this._onDialogCancel);
             if (this._onBackdropClick) this._dialog.removeEventListener('click', this._onBackdropClick);
             if (this._dialog.parentNode) this._dialog.parentNode.removeChild(this._dialog);
         }
-        this._dialog = this._form = this._titleEl = this._submitEl = this._cancelEl = null;
+        this._dialog = this._form = this._titleEl = this._submitEl = this._cancelEl = this._deleteEl = null;
         this._generalErrorEl = null;
         this._fieldEls = {};
-        this._onSubmit = this._onCancelBtn = this._onDialogCancel = this._onBackdropClick = null;
+        this._onSubmit = this._onCancelBtn = this._onDelete = this._onDialogCancel = this._onBackdropClick = null;
         this._submitHandler = null;
+        this._deleteHandler = null;
         this._mode = null;
         this._editingId = null;
     }
@@ -1770,6 +1816,36 @@ map.on('load', () => {
         }
 
         // 5. 保存成功時のみ dialog を閉じる（次回 open で _clearForm が走り値はリセットされる）
+        basemapFormDialog.close();
+    });
+
+    // Phase 2 task 12.3: delete ハンドラ結線。FormDialog の削除ボタン click 後に呼ばれる。
+    // removeCustomBasemap → renderList → 選択中だったなら setBasemap('osm') → save の順。
+    // 保存失敗時は dialog 内警告を出して dialog open を継続（C3 一貫性、Req 10.5）。
+    basemapFormDialog.setDeleteHandler((id) => {
+        const wasSelected = currentBasemapId === id;
+        const removed = removeCustomBasemap(id);
+        if (!removed) {
+            basemapFormDialog.showGeneralMessage(
+                '削除対象が見つかりませんでした',
+            );
+            return;
+        }
+        // 一覧を再描画（in-memory には除去済み）
+        basemapSwitcher.renderList();
+        // 選択中だったなら OSM へフォールバック（Req 9.5）。setBasemap は default persist=true で
+        // saveSelectedBasemapId('osm') を呼ぶため、選択 id も同時に永続化される。
+        if (wasSelected) {
+            setBasemap('osm');
+        }
+        // 定義の永続化
+        const saved = saveCustomBasemaps(customBasemapsPersistable);
+        if (!saved) {
+            basemapFormDialog.showGeneralMessage(
+                '削除を保存できませんでした（当該セッションのみ反映、次回読込で復活します）',
+            );
+            return;
+        }
         basemapFormDialog.close();
     });
 

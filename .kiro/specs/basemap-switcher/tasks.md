@@ -210,7 +210,7 @@
   - _Boundary: BasemapFormDialog_
   - _Depends: 8.3, 11.1_
 
-- [ ] 12.3 BasemapFormDialog 削除フローと保存失敗 UX（C3 対応）
+- [x] 12.3 BasemapFormDialog 削除フローと保存失敗 UX（C3 対応）
   - edit モード時のみ表示する `<button type="button">削除</button>` を追加。click で `window.confirm` で確認後 `removeCustomBasemap(id)` → `saveCustomBasemaps(...)`
   - 保存成功時: 選択中だったなら `setBasemap('osm')` → `Switcher.renderList()` → `dialog.close()`
   - 保存失敗時: dialog 内 `aria-live` 警告「削除を保存できませんでした（当該セッションのみ反映、次回読込で復活します）」を表示し、選択中だったなら `setBasemap('osm')` までは実施するが**ダイアログは閉じず**、利用者の明示操作（取消／再試行）に委ねる（add／edit と対称）
