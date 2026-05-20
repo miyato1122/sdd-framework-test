@@ -74,10 +74,13 @@
   color: #333;
 }
 
-/* radio とラベルを同一行に並べる（1 オプション＝1 行） */
+/* radio とラベルを同一行に並べる（1 オプション＝1 行）。
+   width:100% で margin-left:auto による編集ボタン右寄せを有効化（12.5 fix）。 */
 .basemap-switcher .basemap-option {
   display: flex;
   align-items: center;
+  width: 100%;
+  min-height: 20px;
 }
 
 .basemap-switcher label {
@@ -210,17 +213,22 @@ dialog.basemap-form-dialog::backdrop {
  * 視覚差別化。組込み 4 種には編集ボタンを出さない（Req 9.2、main.js renderList 側）。
  */
 
-/* 利用者エントリ右側の編集ボタン: ラベルの後ろに小さく置く */
+/* 利用者エントリ右側の編集ボタン: ラベルから少し離して右端へ。
+   font-size/line-height は label と揃え、行高を増やさない（他行と高さ整合）。
+   flex-shrink:0 でラベル長に押されて潰れない。 */
 .basemap-switcher .basemap-edit-button {
-  margin-left: auto;
-  padding: 1px 6px;
+  margin-left: auto; /* width:100% の親で右端へ */
+  padding: 0 6px;
   font-size: 11px;
+  line-height: 1.4;
   cursor: pointer;
   background: transparent;
   color: #555;
   border: 1px solid #bbb;
   border-radius: 3px;
   font-family: inherit;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .basemap-switcher .basemap-edit-button:hover {
   background: #f0f0f0;
