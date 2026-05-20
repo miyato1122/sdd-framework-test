@@ -16,42 +16,66 @@ import distance from '@turf/distance';
 import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 
 /**
- * 出典メタデータ（開発者が定義する信頼できる定数のみ）
+ * 出典メタデータ（信頼／未信頼いずれの入力も受け付ける）。
  * @typedef {Object} BasemapAttribution
- * @property {string} label 表示ラベル（markupを含まないテキスト定数）
- * @property {string} url   リンク先URL（http/httpsのみ許容）
+ * @property {string} label 表示テキスト（HTML として扱わない／任意入力可）
+ * @property {string} [url] リンク先URL（http/https のみ a 化、それ以外は fail-closed）
  */
 
 /**
- * 出典を信頼定数から安全に構築する（fail-closed）。
+ * 出典文字列を DOM API 経由で安全に構築する（任意入力対応・fail-closed）。
  *
- * 入力は開発者が定義する定数のみを想定し、利用者入力・外部由来データを
- * 引数に取らず補間もしない（Req 4.1/4.2）。URLのスキームが http/https の
- * ときのみラベルとURLを分離した最小の <a> 文字列を返し、それ以外（例:
- * `javascript:` / `data:`）は fail-closed でラベルテキストのみを返す
- * （Req 4.3）。ラベルはmarkupを含まない前提のテキスト定数として扱い、
- * MapLibre v5 の DOMPurify サニタイズと併せて多層防御とする（Req 4.4）。
+ * 入力 attr は信頼／未信頼いずれの値（利用者入力／永続化由来値を含む）も
+ * 受理する単一実装である（Req 4.1/4.2/4.5）。label と url は文字列補間
+ * せず、document.createElement と textContent／setAttribute のみで構築し、
+ * outerHTML で文字列化する。これによりブラウザの DOM API がテキストの
+ * HTML エスケープと属性値のエンコードを保証し、属性ブレイクアウト・
+ * markup 注入・ラベル経由の XSS が成立しない（Req 4.5）。
  *
- * @param {BasemapAttribution} attr 開発者定義の信頼定数 {label, url}
- * @returns {string} MapLibre source.attribution へ渡す文字列
- *   （http(s) なら最小 <a>、不適合ならラベルのみ）
+ * url は new URL(url, location.href) で解析し、protocol が http: ／
+ * https: のときのみ a 要素を構築する（target=_blank、rel=noopener 付与）。
+ * 解析が throw する場合・protocol が http(s) 以外（javascript: ／ data:
+ * ／ vbscript: 等）の場合は a を生成せず span を textContent のみで構築
+ * し outerHTML を返す（fail-closed・ラベルのみ／Req 4.3）。
+ *
+ * MapLibre v5 サニタイザは多層防御の最後段に位置し、本関数は唯一の防御
+ * として依存しない（design.md Security Considerations 整合）。
+ *
+ * @param {BasemapAttribution} attr {label, url?}（任意入力可）
+ * @returns {string} source.attribution に渡す安全な HTML 文字列
+ *   （http(s) なら a 要素、不適合なら span 要素／いずれもラベルは escape 済み）
  */
 function buildAttribution(attr) {
     const label = attr.label;
     const url = attr.url;
-    // スキーム検証: http / https のみ allow-list（fail-closed）
+    // url スキーム検証: http: ／ https: のみ allow-list（fail-closed）。
+    // location.href を base に解決し protocol を判定する。url 未指定や
+    // 解析失敗時は a を生成せず span ラベルのみへフォールバックする。
     let isHttp = false;
-    try {
-        // location.href を基準に解決し protocol を判定する
-        isHttp = /^https?:$/.test(new URL(url, location.href).protocol);
-    } catch {
-        // URL として解釈できない場合も fail-closed
-        isHttp = false;
+    if (typeof url === 'string' && url.length > 0) {
+        try {
+            isHttp = /^https?:$/.test(new URL(url, location.href).protocol);
+        } catch {
+            // URL として解釈できない場合も fail-closed
+            isHttp = false;
+        }
     }
-    // スキーム非適合はラベルのみ（<a> を生成しない）
-    if (!isHttp) return label;
-    // ラベルとURLを分離: URL は href 属性、ラベルは要素テキストへ
-    return `<a href="${url}" target="_blank" rel="noopener">${label}</a>`;
+    // a 生成パス: createElement + textContent + setAttribute で構築し
+    // outerHTML を返す。文字列補間を経由しないため、label の markup や
+    // url の引用符を用いた属性ブレイクアウトは DOM API が機械的に防ぐ。
+    if (isHttp) {
+        const a = document.createElement('a');
+        a.textContent = label;
+        a.setAttribute('href', url);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener');
+        return a.outerHTML;
+    }
+    // fail-closed パス: a を生成せず span のテキストのみを返す（Req 4.3）。
+    // ラベルは textContent 経由のため markup として解釈されない。
+    const span = document.createElement('span');
+    span.textContent = label;
+    return span.outerHTML;
 }
 
 /**

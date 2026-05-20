@@ -66,7 +66,7 @@
   - _Depends: 5.1, 3.2_
 
 - [ ] 6. Phase 1 Foundation: 共有ユーティリティ（utilities）
-- [ ] 6.1 出典安全ビルダ buildAttribution を DOM API 経由へ作り替え
+- [x] 6.1 出典安全ビルダ buildAttribution を DOM API 経由へ作り替え
   - 入力 `{label, url?}` を任意の信頼／未信頼として扱う単一実装にする。`createElement('a')` ＋ `textContent = label` ＋ `setAttribute('href', url)`（＋ `target="_blank"`、`rel="noopener"`）で構築し `outerHTML` を返す
   - `url` を `new URL(url, location.href)` で解析し `protocol` が `http:`／`https:` 以外、または解析が throw する場合は `<span>` を `textContent` のみで構築して fail-closed（ラベルのみ）
   - 既存 BUILTIN 4 種の経路（Phase 0 で使用中）もこの新実装に通すこと。`<a>` 生成パスの戻り値文字列の見た目は Phase 0 と意味的に等価（同じリンク先・同じテキスト）を保つが、生成方法のみ DOM API 化される
