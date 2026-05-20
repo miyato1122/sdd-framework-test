@@ -193,7 +193,7 @@
   - _Depends: 7.3, 11.2_
 
 - [ ] 12. Phase 2 Core UI: 編集・削除フォームと a11y 仕上げ
-- [ ] 12.1 Switcher: 利用者エントリのみ「編集」ボタンを併置（組込みは非表示）
+- [x] 12.1 Switcher: 利用者エントリのみ「編集」ボタンを併置（組込みは非表示）
   - `renderList()` 内で、各エントリの `id` が `custom_` 接頭辞のときのみ `<button type="button" class="basemap-edit-button" data-id="..." aria-label="…を編集">編集</button>` を radio + label の右側に併置
   - 組込み 4 種には編集ボタンを描画しない（Req 9.2）。`click` デリゲーションで `.basemap-edit-button` → `formDialog.open({mode:'edit', entry})` を呼ぶ
   - 観測可能な完了: 既存 4 種に編集ボタンが表示されない／追加したカスタムエントリには編集ボタンが表示され、クリックで dialog が edit モードで開く

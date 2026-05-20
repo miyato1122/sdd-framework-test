@@ -803,15 +803,25 @@ class BasemapSwitcherControl {
         };
         fieldset.addEventListener('change', this._onChange);
 
-        // click デリゲーション: 末尾「追加」ボタン → formDialog.open({mode:'create'})。
-        // Phase 2 task 12.1 では同ハンドラで .basemap-edit-button → mode:'edit' を分岐追加する。
+        // click デリゲーション: 末尾「追加」ボタン → formDialog.open({mode:'create'})、
+        // 利用者エントリの「編集」ボタン → formDialog.open({mode:'edit', entry}) を分岐。
         // formDialog 未注入時は no-op（防御的）。
         this._onClick = (e) => {
             const target = e.target;
             if (!target || target.tagName !== 'BUTTON') return;
             const parent = target.parentElement;
+            // 末尾「＋ 背景地図を追加」（Req 7.1／7.2）
             if (parent && parent.classList && parent.classList.contains('basemap-add-row')) {
                 if (this._formDialog) this._formDialog.open({ mode: 'create' });
+                return;
+            }
+            // 利用者エントリの「編集」ボタン（Req 9.1）。data-id で対象エントリを解決。
+            if (target.classList && target.classList.contains('basemap-edit-button')) {
+                const targetId = target.getAttribute('data-id');
+                if (this._formDialog && targetId) {
+                    const entry = getBasemapById(targetId);
+                    if (entry) this._formDialog.open({ mode: 'edit', entry });
+                }
             }
         };
         fieldset.addEventListener('click', this._onClick);
@@ -879,6 +889,21 @@ class BasemapSwitcherControl {
             row.className = 'basemap-option';
             row.appendChild(input);
             row.appendChild(label);
+
+            // 利用者エントリのみ「編集」ボタンを併置する（Req 9.1／9.2）。
+            // 組込み 4 種（'osm'/'gsi_*'）には編集ボタンを描画しない。
+            // click は onAdd の delegation handler が data-id 経由で entry を解決し
+            // formDialog.open({mode:'edit', entry}) を呼ぶ。
+            if (typeof entry.id === 'string' && entry.id.startsWith('custom_')) {
+                const editButton = document.createElement('button');
+                editButton.type = 'button';
+                editButton.className = 'basemap-edit-button';
+                editButton.setAttribute('data-id', entry.id);
+                editButton.setAttribute('aria-label', entry.label + 'を編集');
+                editButton.textContent = '編集';
+                row.appendChild(editButton);
+            }
+
             this._fieldset.appendChild(row);
         });
 
