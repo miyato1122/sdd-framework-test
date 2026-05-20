@@ -242,7 +242,7 @@
   - _Boundary: restoreOnLoad_
   - _Depends: 6.2, 11.1, 11.2, 11.3_
 
-- [ ] 13.2 map.on('load') 内の登録順整理と Req 1.6 改訂の意味結線
+- [x] 13.2 map.on('load') 内の登録順整理と Req 1.6 改訂の意味結線
   - `map.on('load')` 内のシーケンスを以下順に整理: 既存 OpacityControl×2 → `restoreOnLoad()`（新規）→ `map.addControl(new BasemapSwitcherControl(), 'bottom-left')`（既存）→ 既存 click／mousemove／render／terrain
   - これにより Switcher の初回 `renderList()` が復元後の `customBasemaps` と `currentBasemapId` を反映する（中間状態は addControl 前に閉じる）
   - 観測可能な完了: 起動時に永続化選択がある場合は OSM ではなく当該背景で初期表示され、Switcher の checked radio がそれを示す／永続化選択がない場合のみ OSM 表示（Req 1.6 改訂の意味通り）

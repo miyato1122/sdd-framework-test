@@ -1809,6 +1809,13 @@ map.on('load', () => {
     // （左上/右上）・Geolocate/Terrain（右下）の登録・位置・挙動は変更しない
     // （Req 5.3）。getDefaultPosition も 'bottom-left' だが addControl 第2引数
     // でも明示する。
+    // Phase 2 task 13.2: 起動時復元を addControl(Switcher) **より前**に実行する。
+    // これにより restoreOnLoad 内の setBasemap が初期 osm を撤去して復元背景を add
+    // した後で Switcher が初回 renderList を行い、復元後の customBasemaps と
+    // currentBasemapId を反映した radio + edit ボタンを描画できる。Req 1.6（改訂版：
+    // 永続化選択が無い初回のみ OSM、ある場合は復元）の意味結線もここで成立する。
+    restoreOnLoad();
+
     // Switcher と FormDialog をペアで生成・結線する（FormDialog の lazy-mount
     // は最初の open() で document.body 直下に dialog を作る）。
     const basemapSwitcher = new BasemapSwitcherControl();
