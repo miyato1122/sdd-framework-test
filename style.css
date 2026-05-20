@@ -216,23 +216,25 @@ dialog.basemap-form-dialog::backdrop {
 /* 利用者エントリ右側の編集ボタン: ラベルから少し離して右端へ。
    font-size/line-height は label と揃え、行高を増やさない（他行と高さ整合）。
    flex-shrink:0 でラベル長に押されて潰れない。 */
+/* 編集ボタンは border 無しのリンク風（他の行＝ラベル＋ラジオのみ、と視覚的に揃える）。
+   hover/focus でのみ可視化し、行内で「異物」に見えないようにする。 */
 .basemap-switcher .basemap-edit-button {
   margin-left: auto; /* width:100% の親で右端へ */
-  padding: 0 6px;
+  padding: 0 4px;
   font-size: 11px;
   line-height: 1.4;
   cursor: pointer;
   background: transparent;
-  color: #555;
-  border: 1px solid #bbb;
-  border-radius: 3px;
+  color: #2563eb;
+  border: 0;
+  border-radius: 2px;
   font-family: inherit;
   flex-shrink: 0;
   white-space: nowrap;
 }
 .basemap-switcher .basemap-edit-button:hover {
-  background: #f0f0f0;
-  color: #222;
+  background: rgba(37, 99, 235, 0.08);
+  text-decoration: underline;
 }
 .basemap-switcher .basemap-edit-button:focus {
   outline: 2px solid #4a90e2;
