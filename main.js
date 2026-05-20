@@ -727,6 +727,10 @@ class BasemapSwitcherControl {
                 this._container.parentNode.removeChild(this._container);
             }
         }
+        // FormDialog の DOM とリスナも併せて解放（lifecycle owner として）
+        if (this._formDialog && typeof this._formDialog.unmount === 'function') {
+            this._formDialog.unmount();
+        }
         this._container = null;
         this._fieldset = null;
         this._onChange = null;
@@ -745,6 +749,282 @@ class BasemapSwitcherControl {
      */
     getDefaultPosition() {
         return 'bottom-left';
+    }
+}
+
+/**
+ * カスタム背景地図の追加／編集／削除のためのモーダル入力フォーム。
+ *
+ * ネイティブ HTML <dialog> を 1 個 document.body 直下に lazy-mount し、
+ * showModal で開く。focus trap・ESC キャンセル・モーダル背景はブラウザ標準
+ * に委ねる（Req 6.5）。Phase 1 task 8.3 は骨格と open／close 副作用なし、
+ * submit 経路の Validate→Registry→Persistence→Switcher.renderList 結線は
+ * Phase 1 task 9.1。Edit モード結線は Phase 2 task 12.2、削除は 12.3。
+ *
+ * cancel／ESC／backdrop はフォーム値を破棄し dialog.close()、レジストリ・
+ * 永続化に副作用なし（Req 7.6）。
+ */
+class BasemapFormDialog {
+    constructor() {
+        this._dialog = null;
+        this._form = null;
+        this._titleEl = null;
+        this._submitEl = null;
+        this._cancelEl = null;
+        this._fieldEls = {};
+        this._mode = null;
+        this._editingId = null;
+        this._onSubmit = null;
+        this._onCancelBtn = null;
+        this._onDialogCancel = null;
+        this._onBackdropClick = null;
+        /**
+         * submit ハンドラ（9.1 で結線）。値検証→add→persist→renderList→close を担う。
+         * @type {((values: Record<string, string>, mode: 'create'|'edit', editingId: string|null) => void) | null}
+         */
+        this._submitHandler = null;
+    }
+
+    /**
+     * dialog DOM を document.body 直下に 1 個 lazy-mount する。
+     * 既存のフォーム構造（label/tileUrl/attributionLabel/attributionLinkUrl/
+     * minzoom/maxzoom）と aria-live エラー領域、保存/取消ボタンを構築する。
+     * @returns {void}
+     */
+    mount() {
+        if (this._dialog) return;
+        const dialog = document.createElement('dialog');
+        dialog.className = 'basemap-form-dialog';
+
+        const form = document.createElement('form');
+        form.method = 'dialog';
+
+        const title = document.createElement('h2');
+        title.textContent = 'カスタム背景地図を追加';
+        form.appendChild(title);
+
+        // フィールド定義（順序＝表示順）
+        const fields = [
+            { name: 'label', labelText: '表示名', required: true, type: 'text' },
+            { name: 'tileUrl', labelText: 'タイル URL テンプレート', required: true, type: 'text', placeholder: 'https://example.com/{z}/{x}/{y}.png' },
+            { name: 'attributionLabel', labelText: '出典テキスト', required: true, type: 'text' },
+            { name: 'attributionLinkUrl', labelText: '出典リンク URL（任意）', required: false, type: 'text' },
+            { name: 'minzoom', labelText: '最小ズーム（任意・0〜24）', required: false, type: 'number' },
+            { name: 'maxzoom', labelText: '最大ズーム（任意・0〜24）', required: false, type: 'number' },
+        ];
+
+        for (const f of fields) {
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'basemap-form-field';
+
+            const labelEl = document.createElement('label');
+            labelEl.htmlFor = 'bmf-' + f.name;
+            // 必須印 '*' はテキストで併記（Req 6.5 の可視ラベル）
+            labelEl.textContent = f.labelText + (f.required ? ' *' : '');
+
+            const inputEl = document.createElement('input');
+            inputEl.type = f.type;
+            inputEl.id = 'bmf-' + f.name;
+            inputEl.name = f.name;
+            if (f.required) inputEl.required = true;
+            if (f.placeholder) inputEl.placeholder = f.placeholder;
+
+            const errorEl = document.createElement('div');
+            errorEl.className = 'basemap-form-error';
+            errorEl.setAttribute('aria-live', 'polite');
+            errorEl.setAttribute('data-for', f.name);
+
+            fieldDiv.appendChild(labelEl);
+            fieldDiv.appendChild(inputEl);
+            fieldDiv.appendChild(errorEl);
+            form.appendChild(fieldDiv);
+
+            this._fieldEls[f.name] = { inputEl, errorEl };
+        }
+
+        // 一般エラー領域（永続化失敗時の警告などフィールド非依存メッセージ用、9.1／12.3）
+        const generalError = document.createElement('div');
+        generalError.className = 'basemap-form-general-error';
+        generalError.setAttribute('aria-live', 'polite');
+        form.appendChild(generalError);
+        this._generalErrorEl = generalError;
+
+        const actions = document.createElement('div');
+        actions.className = 'basemap-form-actions';
+        const submitBtn = document.createElement('button');
+        submitBtn.type = 'submit';
+        submitBtn.textContent = '保存';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = '取消';
+        actions.appendChild(submitBtn);
+        actions.appendChild(cancelBtn);
+        form.appendChild(actions);
+
+        dialog.appendChild(form);
+        document.body.appendChild(dialog);
+
+        this._dialog = dialog;
+        this._form = form;
+        this._titleEl = title;
+        this._submitEl = submitBtn;
+        this._cancelEl = cancelBtn;
+
+        // submit: form method=dialog は submit で dialog.close() を自動実行するが、
+        // Phase 1 9.1 で値検証→add→persist の途中で close するか継続するかを制御するため
+        // preventDefault してアプリ側の _submitHandler に委ねる。未注入時は no-op。
+        this._onSubmit = (e) => {
+            e.preventDefault();
+            if (this._submitHandler) {
+                const values = {};
+                for (const name in this._fieldEls) {
+                    values[name] = this._fieldEls[name].inputEl.value;
+                }
+                this._submitHandler(values, this._mode, this._editingId);
+            }
+        };
+        form.addEventListener('submit', this._onSubmit);
+
+        // 取消ボタン: フォーム値を破棄して close、副作用なし（Req 7.6）
+        this._onCancelBtn = () => {
+            this._clearForm();
+            this._dialog.close();
+        };
+        cancelBtn.addEventListener('click', this._onCancelBtn);
+
+        // ESC: <dialog> 標準で 'cancel' イベント → close。値破棄を併用。
+        this._onDialogCancel = () => {
+            this._clearForm();
+        };
+        dialog.addEventListener('cancel', this._onDialogCancel);
+
+        // backdrop click: dialog 要素自身がイベント target なら背景クリック判定
+        this._onBackdropClick = (e) => {
+            if (e.target === this._dialog) {
+                this._clearForm();
+                this._dialog.close();
+            }
+        };
+        dialog.addEventListener('click', this._onBackdropClick);
+    }
+
+    /**
+     * 入力ハンドラを注入する（9.1 で結線）。
+     * 受け取った values（trim 前生値）と mode／editingId を元に
+     * 検証・add／update・persist・renderList・close を担う。
+     *
+     * @param {(values: Record<string, string>, mode: 'create'|'edit', editingId: string|null) => void} handler
+     * @returns {void}
+     */
+    setSubmitHandler(handler) {
+        this._submitHandler = handler;
+    }
+
+    /**
+     * dialog を開く。
+     * create: 空フォーム表示。edit: Phase 2 12.2 で pre-fill 実装（本タスクでは空表示）。
+     * showModal で表示し最初の input にフォーカスする（Req 7.2／6.5）。
+     *
+     * @param {{mode: 'create'|'edit', entry?: object}} opts
+     * @returns {void}
+     */
+    open(opts) {
+        if (!this._dialog) this.mount();
+        this._mode = opts.mode;
+        this._editingId = (opts.mode === 'edit' && opts.entry) ? opts.entry.id : null;
+        this._clearErrors();
+        this._clearGeneralError();
+
+        if (opts.mode === 'create') {
+            this._titleEl.textContent = 'カスタム背景地図を追加';
+            this._submitEl.textContent = '保存';
+            this._clearFormValues();
+        } else if (opts.mode === 'edit') {
+            this._titleEl.textContent = 'カスタム背景地図を編集';
+            this._submitEl.textContent = '保存';
+            // 12.2 で entry.label/tileUrl/... を pre-fill 予定。本タスクでは空。
+            this._clearFormValues();
+        }
+
+        this._dialog.showModal();
+        const firstField = this._fieldEls.label;
+        if (firstField) firstField.inputEl.focus();
+    }
+
+    /** @returns {void} */
+    close() {
+        if (this._dialog && this._dialog.open) {
+            this._dialog.close();
+        }
+    }
+
+    /**
+     * フィールドエラー文言を表示する（9.1／12.x で利用）。
+     * @param {Array<{field: string, message: string}>} errors
+     * @returns {void}
+     */
+    showFieldErrors(errors) {
+        this._clearErrors();
+        const firstErrField = errors[0]?.field;
+        for (const e of errors) {
+            const cell = this._fieldEls[e.field];
+            if (cell) cell.errorEl.textContent = e.message;
+        }
+        // 最初のエラー入力へフォーカス
+        if (firstErrField && this._fieldEls[firstErrField]) {
+            this._fieldEls[firstErrField].inputEl.focus();
+        }
+    }
+
+    /**
+     * フィールド非依存の一般メッセージ（例: 保存失敗）を aria-live に表示する。
+     * @param {string} message
+     * @returns {void}
+     */
+    showGeneralMessage(message) {
+        if (this._generalErrorEl) this._generalErrorEl.textContent = message;
+    }
+
+    _clearForm() {
+        this._clearFormValues();
+        this._clearErrors();
+        this._clearGeneralError();
+        this._mode = null;
+        this._editingId = null;
+    }
+
+    _clearFormValues() {
+        for (const name in this._fieldEls) {
+            this._fieldEls[name].inputEl.value = '';
+        }
+    }
+
+    _clearErrors() {
+        for (const name in this._fieldEls) {
+            this._fieldEls[name].errorEl.textContent = '';
+        }
+    }
+
+    _clearGeneralError() {
+        if (this._generalErrorEl) this._generalErrorEl.textContent = '';
+    }
+
+    /** リスナと DOM を解放する（Switcher.onRemove から呼ばれる）。 */
+    unmount() {
+        if (this._dialog) {
+            if (this._onSubmit && this._form) this._form.removeEventListener('submit', this._onSubmit);
+            if (this._onCancelBtn && this._cancelEl) this._cancelEl.removeEventListener('click', this._onCancelBtn);
+            if (this._onDialogCancel) this._dialog.removeEventListener('cancel', this._onDialogCancel);
+            if (this._onBackdropClick) this._dialog.removeEventListener('click', this._onBackdropClick);
+            if (this._dialog.parentNode) this._dialog.parentNode.removeChild(this._dialog);
+        }
+        this._dialog = this._form = this._titleEl = this._submitEl = this._cancelEl = null;
+        this._generalErrorEl = null;
+        this._fieldEls = {};
+        this._onSubmit = this._onCancelBtn = this._onDialogCancel = this._onBackdropClick = null;
+        this._submitHandler = null;
+        this._mode = null;
+        this._editingId = null;
     }
 }
 
@@ -1198,7 +1478,13 @@ map.on('load', () => {
     // （左上/右上）・Geolocate/Terrain（右下）の登録・位置・挙動は変更しない
     // （Req 5.3）。getDefaultPosition も 'bottom-left' だが addControl 第2引数
     // でも明示する。
-    map.addControl(new BasemapSwitcherControl(), 'bottom-left');
+    // Switcher と FormDialog をペアで生成・結線する（FormDialog の lazy-mount
+    // は最初の open() で document.body 直下に dialog を作る）。
+    const basemapSwitcher = new BasemapSwitcherControl();
+    map.addControl(basemapSwitcher, 'bottom-left');
+    const basemapFormDialog = new BasemapFormDialog();
+    basemapSwitcher.setFormDialog(basemapFormDialog);
+    // submit 経路の実装結線は Phase 1 task 9.1（本タスク 8.3 は骨格と open／close まで）。
 
     // 地図上をクリックした際のイベント
     map.on('click', (e) => {

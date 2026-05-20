@@ -130,7 +130,7 @@
   - _Boundary: BasemapSwitcherControl_
   - _Depends: 8.1_
 
-- [ ] 8.3 BasemapFormDialog（create 専用）骨格の実装
+- [x] 8.3 BasemapFormDialog（create 専用）骨格の実装
   - `document.body` 直下に `<dialog class="basemap-form-dialog">` を 1 個生成し、Switcher が参照保持。`open({mode:'create'})` で空フォーム表示・`showModal()` で開く・最初の input にフォーカス
   - 内部 form: label／tileUrl／attributionLabel／attributionLinkUrl／minzoom／maxzoom の各 `<label for><input>` ペア、各 input 下の `aria-live="polite"` エラー領域、`<button type="submit">保存</button>`／`<button type="button">取消</button>`
   - 取消／ESC／backdrop はフォーム値を破棄し `dialog.close()`、レジストリ・永続化に副作用なし（Req 7.6）。submit 経路の実装結線は 9.1 で行う（本タスクは骨格と open／close のみ）
