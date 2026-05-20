@@ -219,7 +219,7 @@
   - _Boundary: BasemapFormDialog_
   - _Depends: 12.2_
 
-- [ ] 12.4 BasemapFormDialog の a11y 仕上げ
+- [x] 12.4 BasemapFormDialog の a11y 仕上げ
   - 各 input に `<label for>`、required 視覚表示、エラー領域 `aria-live="polite"`、submit 失敗時の最初のエラー input への自動フォーカス、submit 中フラグで重複送信防止、ESC／backdrop での確実な close
   - 観測可能な完了: キーボードのみで「開く→入力→保存→編集→削除→cancel／ESC」が完結する／スクリーンリーダで dialog タイトル・各 label・エラー文言が読み上げられる（実機目視はチェックリスト依頼）
   - _Requirements: 6.5_

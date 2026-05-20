@@ -1017,6 +1017,11 @@ class BasemapFormDialog {
         this._deleteHandler = null;
         this._deleteEl = null;
         this._onDelete = null;
+        /**
+         * submit 進行中フラグ。重複送信（高速連打）の防御として使う（task 12.4・Req 6.5）。
+         * @type {boolean}
+         */
+        this._submitting = false;
     }
 
     /**
@@ -1117,12 +1122,19 @@ class BasemapFormDialog {
         // preventDefault してアプリ側の _submitHandler に委ねる。未注入時は no-op。
         this._onSubmit = (e) => {
             e.preventDefault();
-            if (this._submitHandler) {
+            // 重複送信防止: handler 実行中の再 submit を無視（task 12.4・Req 6.5）。
+            // handler が完了後（同期完了 or close 経由）にフラグを下ろす。
+            if (this._submitting) return;
+            if (!this._submitHandler) return;
+            this._submitting = true;
+            try {
                 const values = {};
                 for (const name in this._fieldEls) {
                     values[name] = this._fieldEls[name].inputEl.value;
                 }
                 this._submitHandler(values, this._mode, this._editingId);
+            } finally {
+                this._submitting = false;
             }
         };
         form.addEventListener('submit', this._onSubmit);
