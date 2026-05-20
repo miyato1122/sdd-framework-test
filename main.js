@@ -547,6 +547,29 @@ class BasemapSwitcherControl {
          * @type {((e: Event) => void)|null}
          */
         this._onChange = null;
+        /**
+         * click リスナ参照（追加ボタン／編集ボタンのデリゲーション用、onRemove で解放）。
+         * @type {((e: Event) => void)|null}
+         */
+        this._onClick = null;
+        /**
+         * カスタム背景地図入力フォーム（追加／編集／削除）への参照。
+         * task 8.3 で BasemapFormDialog が定義され、9.1 の結線時に setFormDialog で注入する。
+         * 未注入の場合、追加／編集ボタンの click は no-op（防御的）。
+         * @type {{open: (opts: {mode: 'create'|'edit', entry?: object}) => void} | null}
+         */
+        this._formDialog = null;
+    }
+
+    /**
+     * カスタム背景地図入力フォーム（BasemapFormDialog）の参照を注入する。
+     * map.addControl(...) 後に呼び出し、追加ボタン／編集ボタンの click を結線する。
+     *
+     * @param {{open: (opts: {mode: 'create'|'edit', entry?: object}) => void}} dialog
+     * @returns {void}
+     */
+    setFormDialog(dialog) {
+        this._formDialog = dialog;
     }
 
     /**
@@ -594,11 +617,24 @@ class BasemapSwitcherControl {
         };
         fieldset.addEventListener('change', this._onChange);
 
+        // click デリゲーション: 末尾「追加」ボタン → formDialog.open({mode:'create'})。
+        // Phase 2 task 12.1 では同ハンドラで .basemap-edit-button → mode:'edit' を分岐追加する。
+        // formDialog 未注入時は no-op（防御的）。
+        this._onClick = (e) => {
+            const target = e.target;
+            if (!target || target.tagName !== 'BUTTON') return;
+            const parent = target.parentElement;
+            if (parent && parent.classList && parent.classList.contains('basemap-add-row')) {
+                if (this._formDialog) this._formDialog.open({ mode: 'create' });
+            }
+        };
+        fieldset.addEventListener('click', this._onClick);
+
         container.appendChild(fieldset);
         this._container = container;
         this._fieldset = fieldset;
 
-        // 動的部分（各エントリ）の初回構築
+        // 動的部分（各エントリ＋末尾追加ボタン行）の初回構築
         this.renderList();
         return container;
     }
@@ -659,6 +695,17 @@ class BasemapSwitcherControl {
             row.appendChild(label);
             this._fieldset.appendChild(row);
         });
+
+        // 末尾の「＋ 背景地図を追加」ボタン行（Req 7.1）。
+        // click は onAdd で登録済みのデリゲーションハンドラが捕捉して
+        // formDialog.open({mode:'create'}) を呼ぶ（FormDialog は task 8.3、結線は 9.1）。
+        const addRow = document.createElement('div');
+        addRow.className = 'basemap-add-row';
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.textContent = '＋ 背景地図を追加';
+        addRow.appendChild(addButton);
+        this._fieldset.appendChild(addRow);
     }
 
     /**
@@ -670,9 +717,10 @@ class BasemapSwitcherControl {
      */
     onRemove() {
         if (this._container) {
-            // change リスナを確実に解放（fieldset 上に登録済み）
-            if (this._onChange && this._fieldset) {
-                this._fieldset.removeEventListener('change', this._onChange);
+            // change/click リスナを確実に解放（fieldset 上に登録済み）
+            if (this._fieldset) {
+                if (this._onChange) this._fieldset.removeEventListener('change', this._onChange);
+                if (this._onClick) this._fieldset.removeEventListener('click', this._onClick);
             }
             // DOM を親から切り離す
             if (this._container.parentNode) {
@@ -682,6 +730,8 @@ class BasemapSwitcherControl {
         this._container = null;
         this._fieldset = null;
         this._onChange = null;
+        this._onClick = null;
+        this._formDialog = null;
     }
 
     /**

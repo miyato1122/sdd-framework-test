@@ -122,7 +122,7 @@
   - _Boundary: BasemapSwitcherControl_
   - _Depends: 7.2, 7.3_
 
-- [ ] 8.2 切替コントロール末尾の「＋ 背景地図を追加」ボタン行
+- [x] 8.2 切替コントロール末尾の「＋ 背景地図を追加」ボタン行
   - `renderList()` の末尾に `<div class="basemap-add-row"><button type="button">＋ 背景地図を追加</button></div>` を 1 個生成。click で `formDialog.open({mode:'create'})` を呼ぶ（FormDialog 参照は Switcher が保持）
   - 既存 4 種の radio 行・既存コントロール（OpacityControl・Geolocate／Terrain）の位置・配置に影響しない
   - 観測可能な完了: 一覧末尾に「追加」ボタンが表示され、クリック時に FormDialog が `showModal()` で開く（Phase 1 では create のみ）
