@@ -74,7 +74,7 @@
   - _Requirements: 3.2, 3.5, 4.1, 4.2, 4.3, 4.5_
   - _Boundary: buildAttribution_
 
-- [ ] 6.2 入力検証 validateCustomBasemapInput の実装（フォーム＋復元の単一情報源）
+- [x] 6.2 入力検証 validateCustomBasemapInput の実装（フォーム＋復元の単一情報源）
   - フォーム値および永続化由来の生値の双方に対し、必須（`label`／`tileUrl`／`attributionLabel`、trim 後 1〜100 文字）、`tileUrl` の `new URL` 解析可・`protocol === 'https:'`・`{z}`／`{x}`／`{y}` 各 1 回以上、`attributionLinkUrl`（任意）の http(s) スキーム、ズーム整数 0〜24・`minzoom ≤ maxzoom` を検査
   - 戻り値は `{valid, errors: [{field, message}], normalized?}`。すべての違反項目を `errors` に蓄積する（早期 return しない）。`valid===true` のときのみ `normalized` を返す
   - 観測可能な完了: 同一関数を渡してフォーム入力と永続化由来値の双方を検査でき、各違反ルールに対し対応する `errors[].field`／`message` を返す（手動 ad-hoc 実行で確認）

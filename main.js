@@ -79,6 +79,132 @@ function buildAttribution(attr) {
 }
 
 /**
+ * カスタム背景地図入力の検証エラー項目。
+ * @typedef {Object} ValidationError
+ * @property {string} field   違反フィールド名（label / tileUrl / attributionLabel / attributionLinkUrl / minzoom / maxzoom）
+ * @property {string} message 利用者向け文言（日本語）
+ *
+ * @typedef {Object} NormalizedCustomBasemapInput
+ * @property {string} label                  trim 済み 1〜100 文字
+ * @property {string} tileUrl                trim 済み・https のみ・{z}{x}{y} 含む
+ * @property {string} attributionLabel       trim 済み 1〜100 文字
+ * @property {string} [attributionLinkUrl]   trim 済み（不正スキームでも入力許容、buildAttribution が fail-closed）
+ * @property {number} [minzoom]              整数 0〜24
+ * @property {number} [maxzoom]              整数 0〜24
+ *
+ * @typedef {Object} ValidationResult
+ * @property {boolean} valid
+ * @property {ValidationError[]} errors
+ * @property {NormalizedCustomBasemapInput} [normalized]  valid===true のときのみ
+ */
+
+/**
+ * カスタム背景地図入力（フォームまたは永続化由来）を未信頼として検証する（fail-closed）。
+ *
+ * フォーム入力（Req 8.1〜8.4）と永続化復元時の再検証（Req 10.4）の双方が
+ * 同一規則で動作する単一情報源。すべての違反項目を errors に蓄積してから
+ * 返す（早期 return しない）ため、UI 側はフィールド単位で同時に提示できる。
+ *
+ * 検証規則:
+ * - label / tileUrl / attributionLabel: 必須・trim 後 1〜100 文字
+ * - tileUrl: new URL 解析可・protocol === https:・{z}/{x}/{y} 各 1 回以上
+ *   （Req 4.4／8.3／8.2）
+ * - attributionLinkUrl（任意）: 空または trim 後の文字列を許容。スキーム不正でも
+ *   入力自体は許容し、表示時は buildAttribution が fail-closed（ラベルのみ）に
+ *   する（design Validate セクション整合）
+ * - minzoom / maxzoom（任意）: 整数 0〜24、両指定時は minzoom <= maxzoom
+ *   （Req 8.4）
+ * - tileSize は固定 256（入力対象外）
+ *
+ * @param {Record<string, unknown>} input  フォームまたは永続化由来の生値
+ * @returns {ValidationResult}
+ */
+function validateCustomBasemapInput(input) {
+    /** @type {ValidationError[]} */
+    const errors = [];
+    const safeInput = input && typeof input === 'object' ? input : {};
+
+    const trimString = (v) => (typeof v === 'string' ? v.trim() : '');
+    const label = trimString(safeInput.label);
+    const tileUrl = trimString(safeInput.tileUrl);
+    const attributionLabel = trimString(safeInput.attributionLabel);
+
+    if (label.length === 0) {
+        errors.push({ field: 'label', message: '表示名は必須です' });
+    } else if (label.length > 100) {
+        errors.push({ field: 'label', message: '表示名は 100 文字以内で入力してください' });
+    }
+
+    if (tileUrl.length === 0) {
+        errors.push({ field: 'tileUrl', message: 'タイル URL テンプレートは必須です' });
+    } else {
+        let parsedTile = null;
+        try {
+            parsedTile = new URL(tileUrl);
+        } catch {
+            errors.push({ field: 'tileUrl', message: 'タイル URL テンプレートが有効な URL ではありません' });
+        }
+        if (parsedTile) {
+            if (parsedTile.protocol !== 'https:') {
+                errors.push({ field: 'tileUrl', message: 'タイル URL テンプレートは https:// で始まる必要があります' });
+            }
+            const hasZ = tileUrl.indexOf('{z}') >= 0;
+            const hasX = tileUrl.indexOf('{x}') >= 0;
+            const hasY = tileUrl.indexOf('{y}') >= 0;
+            if (!hasZ || !hasX || !hasY) {
+                errors.push({ field: 'tileUrl', message: 'タイル URL テンプレートに {z}/{x}/{y} のプレースホルダをすべて含めてください' });
+            }
+        }
+    }
+
+    if (attributionLabel.length === 0) {
+        errors.push({ field: 'attributionLabel', message: '出典テキストは必須です' });
+    } else if (attributionLabel.length > 100) {
+        errors.push({ field: 'attributionLabel', message: '出典テキストは 100 文字以内で入力してください' });
+    }
+
+    // 任意: 出典リンク URL — スキーム不正でも入力は許容（buildAttribution が fail-closed）
+    const attributionLinkUrlRaw = trimString(safeInput.attributionLinkUrl);
+    const attributionLinkUrl = attributionLinkUrlRaw.length > 0 ? attributionLinkUrlRaw : undefined;
+
+    // 任意: ズーム（整数・0〜24・両指定時は min <= max）
+    const parseZoom = (raw, fieldName) => {
+        if (raw === undefined || raw === null || raw === '') return undefined;
+        const num = typeof raw === 'number' ? raw : Number(String(raw).trim());
+        if (!Number.isFinite(num) || !Number.isInteger(num)) {
+            errors.push({ field: fieldName, message: 'ズームは整数で入力してください' });
+            return null;
+        }
+        if (num < 0 || num > 24) {
+            errors.push({ field: fieldName, message: 'ズームは 0〜24 の範囲で入力してください' });
+            return null;
+        }
+        return num;
+    };
+    const minzoom = parseZoom(safeInput.minzoom, 'minzoom');
+    const maxzoom = parseZoom(safeInput.maxzoom, 'maxzoom');
+    if (
+        typeof minzoom === 'number' &&
+        typeof maxzoom === 'number' &&
+        minzoom > maxzoom
+    ) {
+        errors.push({ field: 'maxzoom', message: '最大ズームは最小ズーム以上である必要があります' });
+    }
+
+    if (errors.length > 0) {
+        return { valid: false, errors };
+    }
+
+    /** @type {NormalizedCustomBasemapInput} */
+    const normalized = { label, tileUrl, attributionLabel };
+    if (attributionLinkUrl !== undefined) normalized.attributionLinkUrl = attributionLinkUrl;
+    if (typeof minzoom === 'number') normalized.minzoom = minzoom;
+    if (typeof maxzoom === 'number') normalized.maxzoom = maxzoom;
+
+    return { valid: true, errors: [], normalized };
+}
+
+/**
  * 背景地図エントリ（4種背景の単一情報源）。
  * @typedef {Object} BasemapDef
  * @property {'osm'|'gsi_std'|'gsi_seamlessphoto'|'gsi_blank'} id 背景地図ID（ドメイン接頭辞付き）
