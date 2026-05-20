@@ -250,7 +250,7 @@
   - _Depends: 13.1_
 
 - [ ] 14. Phase 2 Validation: 二段検証
-- [ ] 14.1 クリーン環境健全性の確認（Phase 2）
+- [x] 14.1 クリーン環境健全性の確認（Phase 2）
   - lockfile 再現環境で `npm install`／`npm run build`／`npm run dev`／`npm run preview` を実行し、いずれも成功することを確認（build グリーン単独を合格としない）
   - 観測可能な完了: 4 コマンドの成功ログが取得され、`dev`／`preview` が HTTP 200 で `map` div と script を配信する
   - _Depends: 13.2, 12.5_
