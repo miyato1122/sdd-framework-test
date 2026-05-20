@@ -445,32 +445,41 @@ let currentBasemapId = 'osm';
 /**
  * 背景地図を切り替える（アクティブ背景を常に単一・最下に保つ）。
  *
- * 選択された id を BUILTIN_BASEMAPS から引き、現アクティブ背景の layer→source を
- * remove してから選択 source を addSource し、`hazard_flood-layer` を
- * beforeId に addLayer して常に重畳より下（最下）へ挿入する（Req 1.3/
- * 1.4/5.4）。source id は背景 id（例 `osm`/`gsi_std`）、layer id は
- * `<id>-layer`（例 `osm-layer`）で既存初期スタイルの命名と一貫させる。
+ * 選択された id を全レジストリ（getBasemapById = 組込み＋利用者カスタム）から
+ * 引き、現アクティブ背景の layer→source を remove してから選択 source を
+ * addSource し、`hazard_flood-layer` を beforeId に addLayer して常に重畳
+ * より下（最下）へ挿入する（Req 1.3/1.4/5.4/7.5）。source id は背景 id（例
+ * `osm`/`gsi_std`/`custom_<UUID>`）、layer id は `<id>-layer` で既存初期
+ * スタイルの命名と一貫させる。
  *
- * 同一 id の再選択、および BUILTIN_BASEMAPS に存在しない id は no-op として
+ * 同一 id の再選択、および全レジストリに存在しない id は no-op として
  * 何も変更せず返る（不要な再生成・防御的無効 id 回避）。
  *
- * 選択 source の `attribution` は BUILTIN_BASEMAPS で buildAttribution 経由に
- * 構築済みで、未使用となった旧背景 source を除去することで MapLibre
- * 既定 AttributionControl が当該背景＋重畳のみへ自動更新される
- * （Req 3.3）。重畳（hazard_ 各種・skhb・route・hillshade）・既存
- * コントロールには一切触れない（Req 3.4/5.1/5.2）。タイル取得失敗は MapLibre が
- * タイル単位で許容し致命化しないため、本関数に追加のエラーハンドリング
- * を設けない（Req 2.5。設計上の非致命を維持）。
+ * 選択 source の `attribution` は BUILTIN_BASEMAPS／Registry で
+ * buildAttribution 経由に構築済みで、未使用となった旧背景 source を除去
+ * することで MapLibre 既定 AttributionControl が当該背景＋重畳のみへ
+ * 自動更新される（Req 3.3／3.5）。重畳（hazard_ 各種・skhb・route・
+ * hillshade）・既存コントロールには一切触れない（Req 3.4/5.1/5.2）。
+ * タイル取得失敗は MapLibre がタイル単位で許容し致命化しないため、本関数
+ * に追加のエラーハンドリングを設けない（Req 2.5／8.5。設計上の非致命を維持）。
  *
- * @param {BasemapDef['id']} id 選択された背景地図 id
+ * opts.persist（既定 true）は本タスク（7.3）では signature のみ受理し、
+ * 実際の saveSelectedBasemapId 呼出は Phase 2 task 11.3 で結線する。
+ * restoreOnLoad（task 13.1）からは {persist: false} を渡して再保存ループを
+ * 避ける契約（Req 10.6 関連）。
+ *
+ * @param {string} id 選択された背景地図 id（組込み or 'custom_<UUID>'）
+ * @param {{persist?: boolean}} [opts] 既定 {persist: true}（11.3 で結線）
  * @returns {void}
  */
-function setBasemap(id) {
-    // 防御的: BUILTIN_BASEMAPS に無い id は no-op（既存背景を維持）
-    const entry = BUILTIN_BASEMAPS.find((b) => b.id === id);
+function setBasemap(id, opts) {
+    // 防御的: 全レジストリに無い id は no-op（既存背景を維持）
+    const entry = getBasemapById(id);
     if (!entry) return;
     // 同一 id の再選択は no-op（不要な source/layer 再生成を回避）
     if (id === currentBasemapId) return;
+    // opts.persist の既定 true / 引数受理（実結線は task 11.3）
+    void (opts && opts.persist === false);
 
     // 旧アクティブ背景の layer→source を remove（過渡的に背景 0 個）。
     // source/layer 命名は初期スタイル（source `osm` / layer `osm-layer`）
@@ -480,10 +489,10 @@ function setBasemap(id) {
     map.removeLayer(prevLayerId);
     map.removeSource(prevSourceId);
 
-    // 選択 source を add。BUILTIN_BASEMAPS は attribution を source の外に持つため
+    // 選択 source を add。BUILTIN_BASEMAPS／Registry は attribution を source の外に持つため
     // ここで source へマージして渡す（未マージだと切替後に出典が消える）。
     // 既定 AttributionControl は使用中 source の attribution を集約するため
-    // これで背景に追従して出典が表示される（Req 3.1/3.2/3.3）。
+    // これで背景に追従して出典が表示される（Req 3.1/3.2/3.3/3.5）。
     map.addSource(id, { ...entry.source, attribution: entry.attribution });
     // 背景は常に最下: 初期スタイル常駐の `hazard_flood-layer` を beforeId
     // に指定し重畳（hazard_ 各種・route・skhb）より下へ挿入する（Req 5.4）。

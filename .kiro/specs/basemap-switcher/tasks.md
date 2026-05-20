@@ -104,7 +104,7 @@
   - _Boundary: Registry_
   - _Depends: 6.1_
 
-- [ ] 7.3 setBasemap の対象を全レジストリへ拡張（opts.persist は signature のみ）
+- [x] 7.3 setBasemap の対象を全レジストリへ拡張（opts.persist は signature のみ）
   - 既存 `setBasemap(id)` を `setBasemap(id, opts)` に拡張。対象 id を `getBasemapById(id)` で解決（組込み＋利用者）し、未知 id・同一 id は no-op を維持
   - `opts.persist` は本タスクでは signature と既定 `true` のみ用意（`saveSelectedBasemapId` の実呼出結線は Phase 2 の 11.3）
   - 観測可能な完了: 組込み id・カスタム id のいずれを渡しても `setBasemap` が単一最下背景＋出典追従を維持する（重畳・skhb・route・hillshade 不変）
