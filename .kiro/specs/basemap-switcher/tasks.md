@@ -156,7 +156,7 @@
   - _Depends: 6.1, 6.2, 6.3, 7.2, 7.3, 8.1, 8.3_
 
 - [ ] 10. Phase 1 Validation: 二段検証
-- [ ] 10.1 クリーン環境健全性の確認（Phase 1）
+- [x] 10.1 クリーン環境健全性の確認（Phase 1）
   - lockfile 再現環境で `npm install`（Windows 環境特性のため `npm ci` を回避）／`npm run build`／`npm run dev`／`npm run preview` を実行し、いずれも成功することを確認（build グリーン単独を合格としない／偽 green 回避）
   - 観測可能な完了: 4 コマンドの成功ログが取得され、`dev`／`preview` が HTTP 200 で `map` div と script を配信する
   - _Depends: 9.1, 8.4_
