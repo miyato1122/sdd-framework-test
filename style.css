@@ -203,3 +203,50 @@ dialog.basemap-form-dialog::backdrop {
   color: #333;
   border: 1px solid #ccc;
 }
+
+/*
+ * Phase 2 task 12.5: 利用者エントリの「編集」ボタン（Switcher 内）と
+ * 「削除」ボタン（FormDialog 内、破壊的操作）、および aria-live エラー領域の
+ * 視覚差別化。組込み 4 種には編集ボタンを出さない（Req 9.2、main.js renderList 側）。
+ */
+
+/* 利用者エントリ右側の編集ボタン: ラベルの後ろに小さく置く */
+.basemap-switcher .basemap-edit-button {
+  margin-left: auto;
+  padding: 1px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  background: transparent;
+  color: #555;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-family: inherit;
+}
+.basemap-switcher .basemap-edit-button:hover {
+  background: #f0f0f0;
+  color: #222;
+}
+.basemap-switcher .basemap-edit-button:focus {
+  outline: 2px solid #4a90e2;
+  outline-offset: 1px;
+}
+
+/* 削除ボタン: 破壊的操作と分かる差別化（赤系、ただし押下まで控えめなアウトライン） */
+.basemap-form-dialog .basemap-form-actions button.basemap-form-delete {
+  background: #fff;
+  color: #c0392b;
+  border: 1px solid #c0392b;
+  margin-right: auto; /* 左端へ寄せて保存／取消と視覚距離を取る */
+}
+.basemap-form-dialog .basemap-form-actions button.basemap-form-delete:hover {
+  background: #fdecea;
+}
+
+/* aria-live エラー領域の視認性: 非空時のみ表示・余白も非空のときのみ */
+.basemap-form-dialog .basemap-form-error:not(:empty),
+.basemap-form-dialog .basemap-form-general-error:not(:empty) {
+  padding: 2px 4px;
+  background: #fdecea;
+  border-left: 3px solid #c0392b;
+  border-radius: 2px;
+}

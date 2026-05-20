@@ -226,7 +226,7 @@
   - _Boundary: BasemapFormDialog_
   - _Depends: 8.3, 12.2, 12.3_
 
-- [ ] 12.5 (P) 編集ボタン・削除ボタン・aria-live エラー領域のスタイル
+- [x] 12.5 (P) 編集ボタン・削除ボタン・aria-live エラー領域のスタイル
   - `style.css` に `.basemap-switcher .basemap-edit-button`（編集ボタンの最小サイズ・整列）、`dialog.basemap-form-dialog` 内の `button[type=button]`（取消・削除）と `aria-live` エラー領域の最小スタイルを追加
   - 観測可能な完了: 編集／削除ボタンが視覚的に区別でき（削除は破壊的操作と分かる）、エラー領域が利用者の目に明確に表示される
   - _Requirements: 6.4, 6.5_
