@@ -170,7 +170,7 @@
   - _Depends: 10.1_
 
 - [ ] 11. Phase 2 Core: 編集・削除と選択永続化の基盤
-- [ ] 11.1 Registry の編集／削除／復元追加（updateCustomBasemap／removeCustomBasemap／addRestoredCustomBasemap）
+- [x] 11.1 Registry の編集／削除／復元追加（updateCustomBasemap／removeCustomBasemap／addRestoredCustomBasemap）
   - `updateCustomBasemap(id, def)`: 対象エントリ（`custom_` 接頭辞のみ）を id 保持で差し替え（順序維持）、`buildAttribution` で `attribution` を再構築。組込み id は no-op
   - `removeCustomBasemap(id)`: 対象エントリを除去（組込み id は no-op）。戻り値 `boolean`
   - `addRestoredCustomBasemap(item)`: Persistence 由来の `{id, ...normalized}` を受け取り、保存済み id を**そのまま採用**してレジストリ末尾に追加（新 UUID を振らない）。id が `/^custom_[0-9a-f-]{36}$/` に適合しない場合は何もせず戻る（防御的、設計レビュー C1 対応）

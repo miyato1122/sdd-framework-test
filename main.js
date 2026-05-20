@@ -458,6 +458,111 @@ function addCustomBasemap(def) {
 }
 
 /**
+ * 起動時復元専用: Persistence 由来の {id, ...normalized} を受け取り、
+ * 保存済み id をそのまま採用してレジストリ末尾に追加する（新 UUID を振らない）。
+ *
+ * id 安定性は選択復元（Req 10.7）の前提のため、addCustomBasemap（新規追加・新 UUID 生成）
+ * とは契約を分離する（design レビュー C1 対応）。id が `/^custom_[0-9a-f-]{36}$/` に
+ * 適合しない、もしくは item が不正なら防御的に undefined を返す。
+ *
+ * customBasemaps と customBasemapsPersistable の両ストアを同順序で更新する。
+ *
+ * @param {BasemapDefPersistable} item Persistence.loadCustomBasemaps 由来＋
+ *   validateCustomBasemapInput 通過済み正規化値に id を保持したもの
+ * @returns {BasemapDef | undefined}
+ */
+function addRestoredCustomBasemap(item) {
+    if (!item || typeof item.id !== 'string') return undefined;
+    if (!/^custom_[0-9a-f-]{36}$/.test(item.id)) return undefined;
+    const source = {
+        type: 'raster',
+        tiles: [item.tileUrl],
+        tileSize: 256,
+    };
+    if (typeof item.minzoom === 'number') source.minzoom = item.minzoom;
+    if (typeof item.maxzoom === 'number') source.maxzoom = item.maxzoom;
+    const attribution = buildAttribution({
+        label: item.attributionLabel,
+        url: item.attributionLinkUrl,
+    });
+    /** @type {BasemapDef} */
+    const entry = { id: item.id, label: item.label, source, attribution };
+    customBasemaps.push(entry);
+    /** @type {BasemapDefPersistable} */
+    const persistable = {
+        id: item.id,
+        label: item.label,
+        tileUrl: item.tileUrl,
+        attributionLabel: item.attributionLabel,
+    };
+    if (item.attributionLinkUrl !== undefined) persistable.attributionLinkUrl = item.attributionLinkUrl;
+    if (typeof item.minzoom === 'number') persistable.minzoom = item.minzoom;
+    if (typeof item.maxzoom === 'number') persistable.maxzoom = item.maxzoom;
+    customBasemapsPersistable.push(persistable);
+    return entry;
+}
+
+/**
+ * カスタム背景地図エントリを編集する（id 保持で差し替え、順序維持）。
+ *
+ * 組込み id（'custom_' 接頭辞なし）は no-op で undefined を返す。
+ * customBasemaps と customBasemapsPersistable の両ストアを同 index で差し替える。
+ * attribution は新しい def の attributionLabel/Link から buildAttribution で再構築。
+ *
+ * @param {string} id custom_ 接頭辞付き id
+ * @param {NormalizedCustomBasemapInput} def validate 通過済み正規化値
+ * @returns {BasemapDef | undefined} 対象なしは undefined
+ */
+function updateCustomBasemap(id, def) {
+    if (typeof id !== 'string' || !id.startsWith('custom_')) return undefined;
+    const idx = customBasemaps.findIndex((b) => b.id === id);
+    if (idx === -1) return undefined;
+    const source = {
+        type: 'raster',
+        tiles: [def.tileUrl],
+        tileSize: 256,
+    };
+    if (typeof def.minzoom === 'number') source.minzoom = def.minzoom;
+    if (typeof def.maxzoom === 'number') source.maxzoom = def.maxzoom;
+    const attribution = buildAttribution({
+        label: def.attributionLabel,
+        url: def.attributionLinkUrl,
+    });
+    /** @type {BasemapDef} */
+    const newEntry = { id, label: def.label, source, attribution };
+    customBasemaps[idx] = newEntry;
+    /** @type {BasemapDefPersistable} */
+    const persistable = {
+        id,
+        label: def.label,
+        tileUrl: def.tileUrl,
+        attributionLabel: def.attributionLabel,
+    };
+    if (def.attributionLinkUrl !== undefined) persistable.attributionLinkUrl = def.attributionLinkUrl;
+    if (typeof def.minzoom === 'number') persistable.minzoom = def.minzoom;
+    if (typeof def.maxzoom === 'number') persistable.maxzoom = def.maxzoom;
+    customBasemapsPersistable[idx] = persistable;
+    return newEntry;
+}
+
+/**
+ * カスタム背景地図エントリを削除する。
+ *
+ * 組込み id は no-op で false を返す。両ストアから同 index で除去。
+ *
+ * @param {string} id custom_ 接頭辞付き id
+ * @returns {boolean} 除去できたか（id 不在・組込み id は false）
+ */
+function removeCustomBasemap(id) {
+    if (typeof id !== 'string' || !id.startsWith('custom_')) return false;
+    const idx = customBasemaps.findIndex((b) => b.id === id);
+    if (idx === -1) return false;
+    customBasemaps.splice(idx, 1);
+    customBasemapsPersistable.splice(idx, 1);
+    return true;
+}
+
+/**
  * 現在アクティブな背景地図 id（実行時状態は唯一これのみ）。
  *
  * 初期スタイルは既存の osm source / osm-layer を持つため、起動時の
