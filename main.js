@@ -709,6 +709,42 @@ function setBasemap(id, opts) {
 }
 
 /**
+ * 起動時にカスタム背景地図定義と最後に選択した背景 id を localStorage から復元する。
+ *
+ * 手順:
+ * 1. loadCustomBasemaps() の各 item を validateCustomBasemapInput で再検証（Req 10.4）。
+ *    通過分のみ addRestoredCustomBasemap({id: item.id, ...normalized}) で
+ *    customBasemaps / customBasemapsPersistable へ反映。**保存済み id を保持**
+ *    （新 UUID を振らない — 設計レビュー C1 対応／後続の選択復元で getBasemapById
+ *    が同じ id で解決できることが前提）。検証落ち item はスキップ。
+ * 2. loadSelectedBasemapId() を getBasemapById で解決。undefined ／ 'osm' のときは
+ *    初期 osm のまま（何もしない）。それ以外で組込み or 復元成功カスタム id に
+ *    該当するときは setBasemap(id, {persist: false}) — 再保存ループを避ける。
+ *
+ * いずれの失敗（読込失敗・検証失敗・id 不在）も致命化しない（OSM フォールバック、
+ * Req 1.6／10.8）。本関数は map.on('load') 内で addControl(Switcher) **より前**に
+ * 呼ばれ、Switcher の初回 renderList が復元後の状態を反映できるようにする
+ * （map.on('load') の登録順整理は task 13.2）。
+ *
+ * @returns {void}
+ */
+function restoreOnLoad() {
+    // 1. 定義の復元（保存済み id を保持）
+    const items = loadCustomBasemaps();
+    for (const item of items) {
+        const result = validateCustomBasemapInput(item);
+        if (!result.valid) continue;
+        addRestoredCustomBasemap({ id: item.id, ...result.normalized });
+    }
+    // 2. 選択の復元（解決できないときは初期 osm のまま）
+    const selectedId = loadSelectedBasemapId();
+    if (!selectedId || selectedId === 'osm') return;
+    const entry = getBasemapById(selectedId);
+    if (!entry) return;
+    setBasemap(selectedId, { persist: false });
+}
+
+/**
  * 背景地図切替コントロール（MapLibre IControl）。
  *
  * 地図左下に配置する背景地図の排他選択 UI。BUILTIN_BASEMAPS の各エントリを

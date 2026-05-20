@@ -233,7 +233,7 @@
   - _Boundary: style.css presentation_
 
 - [ ] 13. Phase 2 Integration: 起動時復元の結線
-- [ ] 13.1 restoreOnLoad の実装
+- [x] 13.1 restoreOnLoad の実装
   - `loadCustomBasemaps()` の各 item を `validateCustomBasemapInput` で再検証。通過分のみ `addRestoredCustomBasemap({id: item.id, ...normalized})` でレジストリに反映（新 UUID を振らない）。検証落ち item はスキップ
   - `loadSelectedBasemapId()` を `getBasemapById` で解決。`undefined`／`'osm'` のときは初期 osm を維持。それ以外で組込み／復元成功カスタムに該当する id のときは `setBasemap(id, {persist:false})`
   - いずれの失敗（読込失敗・検証失敗・id 不在）も致命化しない（OSM フォールバック）
