@@ -146,7 +146,7 @@
   - _Boundary: style.css presentation_
 
 - [ ] 9. Phase 1 Integration: 追加フローの結線
-- [ ] 9.1 FormDialog submit → Validate → Registry → Persistence → Switcher.renderList の結線（add 経路）
+- [x] 9.1 FormDialog submit → Validate → Registry → Persistence → Switcher.renderList の結線（add 経路）
   - submit ハンドラで `validateCustomBasemapInput(formValues)` を呼ぶ。`valid===false` のときは各 input 下の `aria-live` エラー領域に文言を表示しダイアログを閉じない／最初のエラー入力へフォーカスを移す
   - `valid===true` のときは `addCustomBasemap(normalized)` → `saveCustomBasemaps(updatedItems)`。保存失敗時は dialog 内 `aria-live` 警告で「保存できませんでした（当該セッションのみ反映）」を提示しつつ追加自体は採用（セッション内有効、Req 10.5）
   - 成功／警告いずれの経路でも `Switcher.renderList()` を呼んで一覧と末尾「追加」ボタンを再構築し、`dialog.close()`

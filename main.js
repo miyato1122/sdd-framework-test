@@ -375,6 +375,20 @@ const BUILTIN_BASEMAPS = Object.freeze([
 let customBasemaps = [];
 
 /**
+ * customBasemaps の各エントリに対応する永続化可能形（BasemapDefPersistable）を
+ * 同順序で保持する並行ストア。Registry 変更（add／update／remove／restore）と
+ * 同期して更新され、saveCustomBasemaps への入力として使用する。
+ *
+ * Why parallel: BasemapDef.attribution は buildAttribution の戻り値（HTML 文字列）
+ * で原入力（attributionLabel／attributionLinkUrl）が消えているため、永続化フィールド
+ * を逆算できない。design.md の規約「source.attribution は保存せず毎起動時に再構築」
+ * を満たすために原入力を別途保持する（task 9.1 で導入、task 11.x 編集／削除時にも同期）。
+ *
+ * @type {BasemapDefPersistable[]}
+ */
+let customBasemapsPersistable = [];
+
+/**
  * 組込み（不変）と利用者追加（可変）のレジストリを結合して返す。
  *
  * 順序は「組込みが先（BUILTIN_BASEMAPS の順）、利用者追加が後（追加順）」。
@@ -428,6 +442,18 @@ function addCustomBasemap(def) {
     /** @type {BasemapDef} */
     const entry = { id, label: def.label, source, attribution };
     customBasemaps.push(entry);
+    // 並行ストアにも永続化形を保持する（task 9.1 結線：saveCustomBasemaps への入力）
+    /** @type {BasemapDefPersistable} */
+    const persistable = {
+        id,
+        label: def.label,
+        tileUrl: def.tileUrl,
+        attributionLabel: def.attributionLabel,
+    };
+    if (def.attributionLinkUrl !== undefined) persistable.attributionLinkUrl = def.attributionLinkUrl;
+    if (typeof def.minzoom === 'number') persistable.minzoom = def.minzoom;
+    if (typeof def.maxzoom === 'number') persistable.maxzoom = def.maxzoom;
+    customBasemapsPersistable.push(persistable);
     return entry;
 }
 
@@ -1484,7 +1510,42 @@ map.on('load', () => {
     map.addControl(basemapSwitcher, 'bottom-left');
     const basemapFormDialog = new BasemapFormDialog();
     basemapSwitcher.setFormDialog(basemapFormDialog);
-    // submit 経路の実装結線は Phase 1 task 9.1（本タスク 8.3 は骨格と open／close まで）。
+
+    // Phase 1 task 9.1: FormDialog submit → Validate → Registry → Persistence → Switcher.renderList の結線（add 経路）。
+    // edit 経路は Phase 2 task 12.2 で同じハンドラ内に mode==='edit' 分岐として追加する。
+    basemapFormDialog.setSubmitHandler((values, mode /*, editingId */) => {
+        // Phase 1 では create のみ実装（edit は 12.2 で結線）
+        if (mode !== 'create') return;
+
+        // 1. 未信頼入力として検証（Req 8.1〜8.4）。
+        //    違反時はフィールド単位エラーを表示し、ダイアログは閉じない／最初のエラーへフォーカス
+        const result = validateCustomBasemapInput(values);
+        if (!result.valid) {
+            basemapFormDialog.showFieldErrors(result.errors);
+            return;
+        }
+
+        // 2. Registry へ追加（custom_<UUID> 生成、source 構築、buildAttribution）。
+        //    成功時は in-memory レジストリと並行 persistable ストアが両方更新される。
+        addCustomBasemap(result.normalized);
+
+        // 3. Switcher を再描画（追加した radio が一覧末尾に出現し、即時選択可能、Req 7.4）。
+        //    永続化結果に関わらず in-memory には追加済みなので renderList は先に行う。
+        basemapSwitcher.renderList();
+
+        // 4. 永続化（Req 10.1）。失敗時は dialog を閉じず警告を維持し利用者の明示操作を待つ
+        //    （add／edit／delete を C3 一貫性で対称化する方針、Req 10.5 の通知 visibility を保つ）。
+        const saved = saveCustomBasemaps(customBasemapsPersistable);
+        if (!saved) {
+            basemapFormDialog.showGeneralMessage(
+                '保存できませんでした（当該セッションのみ反映、再読込で消えます）',
+            );
+            return;
+        }
+
+        // 5. 保存成功時のみ dialog を閉じる（次回 open で _clearForm が走り値はリセットされる）
+        basemapFormDialog.close();
+    });
 
     // 地図上をクリックした際のイベント
     map.on('click', (e) => {
