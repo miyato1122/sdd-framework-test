@@ -268,6 +268,54 @@ function saveCustomBasemaps(items) {
     }
 }
 
+/** localStorage キー（選択中背景地図 id、version 接頭辞付き）。 */
+const STORAGE_KEY_SELECTED_ID = 'basemap-switcher:v1:selectedId';
+
+/**
+ * 永続化された「最後に選択した背景地図 id」を読み込む（fail-closed）。
+ *
+ * localStorage 利用不可・読込例外・JSON 解析失敗・version 不一致・id が文字列でない
+ * のいずれでも null を返し例外を呼び出し元に漏らさない（Req 10.5）。
+ * 外部送信は行わない（Req 10.3）。返り値は信頼せず利用前に getBasemapById で
+ * 解決可能性を確認する設計（Req 10.4／10.8）。
+ *
+ * @returns {string | null}  失敗時は null
+ */
+function loadSelectedBasemapId() {
+    try {
+        if (typeof localStorage === 'undefined') return null;
+        const raw = localStorage.getItem(STORAGE_KEY_SELECTED_ID);
+        if (raw === null) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return null;
+        if (parsed.version !== 1) return null;
+        if (typeof parsed.id !== 'string') return null;
+        return parsed.id;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 選択中背景地図 id を永続化する（fail-closed）。
+ *
+ * QuotaExceededError／SecurityError／serialize 失敗のいずれでも false を返し
+ * 例外を呼び出し元に漏らさない（Req 10.5）。外部送信は行わない（Req 10.3）。
+ *
+ * @param {string} id
+ * @returns {boolean}  保存成功
+ */
+function saveSelectedBasemapId(id) {
+    try {
+        if (typeof localStorage === 'undefined') return false;
+        const payload = JSON.stringify({ version: 1, id });
+        localStorage.setItem(STORAGE_KEY_SELECTED_ID, payload);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 /**
  * 背景地図エントリ（4種背景の単一情報源）。
  * @typedef {Object} BasemapDef

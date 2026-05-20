@@ -179,7 +179,7 @@
   - _Boundary: Registry_
   - _Depends: 7.2_
 
-- [ ] 11.2 永続化（選択 id 側）helper の実装
+- [x] 11.2 永続化（選択 id 側）helper の実装
   - `loadSelectedBasemapId()`／`saveSelectedBasemapId(id)` を実装。キー `basemap-switcher:v1:selectedId`、値は `{ version: 1, id: string }` の JSON。読込失敗は `null`、保存失敗は `false`（fail-closed）
   - 観測可能な完了: round-trip で同 id が読み戻せる／無効 JSON や disabled localStorage 模擬で load=`null`／save=`false`／外部送信なし
   - _Requirements: 10.6, 10.7_
