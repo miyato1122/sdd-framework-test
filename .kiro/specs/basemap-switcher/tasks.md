@@ -89,7 +89,7 @@
   - _Boundary: Persistence (customs)_
 
 - [ ] 7. Phase 1 Core: レジストリ二層化と切替の汎用化
-- [ ] 7.1 BUILTIN_BASEMAPS への改名と freeze
+- [x] 7.1 BUILTIN_BASEMAPS への改名と freeze
   - 既存 `BASEMAPS` を `BUILTIN_BASEMAPS` に改名し `Object.freeze`（各エントリも freeze）
   - 既存参照箇所（`setBasemap` 内の `BASEMAPS.find`、`BasemapSwitcherControl.onAdd` の forEach、初期 style 内の `BASEMAPS.find(b => b.id === 'osm')` を含む）をすべて新名へ置換
   - 観測可能な完了: 改名後に `npm run build` が成功し、Phase 0 と同様にアプリ起動・OSM 表示・4 種切替が成立する（機能変化なし）

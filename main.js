@@ -291,8 +291,8 @@ function saveCustomBasemaps(items) {
  *
  * @type {ReadonlyArray<BasemapDef>}
  */
-const BASEMAPS = [
-    {
+const BUILTIN_BASEMAPS = Object.freeze([
+    Object.freeze({
         // OSM（既定）。初期スタイルの既存 osm source と同一値を踏襲（Req 1.6）。
         id: 'osm',
         label: 'OpenStreetMap',
@@ -308,8 +308,8 @@ const BASEMAPS = [
             label: 'OpenStreetMap contributors',
             url: 'https://www.openstreetmap.org/copyright',
         }),
-    },
-    {
+    }),
+    Object.freeze({
         // 地理院地図(標準): PNG z0–18（research.md GSI std）。
         id: 'gsi_std',
         label: '地理院地図(標準)',
@@ -324,8 +324,8 @@ const BASEMAPS = [
             label: '出典：国土地理院ウェブサイト',
             url: 'https://maps.gsi.go.jp/development/ichiran.html',
         }),
-    },
-    {
+    }),
+    Object.freeze({
         // 航空写真: JPEG z2–18。タイル画像形式が .jpg のため欠落させない
         // よう拡張子を保持（Req 2.1。research.md GSI seamlessphoto）。
         id: 'gsi_seamlessphoto',
@@ -343,8 +343,8 @@ const BASEMAPS = [
             label: '出典：国土地理院ウェブサイト',
             url: 'https://maps.gsi.go.jp/development/ichiran.html',
         }),
-    },
-    {
+    }),
+    Object.freeze({
         // 白地図: PNG z5–14・日本域のみ。maxzoom:14 で z>14 を overzoom
         // させ空白埋め尽くしを回避（Req 2.2/2.3。research.md GSI blank）。
         id: 'gsi_blank',
@@ -362,8 +362,8 @@ const BASEMAPS = [
             label: '出典：国土地理院ウェブサイト',
             url: 'https://maps.gsi.go.jp/development/ichiran.html',
         }),
-    },
-];
+    }),
+]);
 
 /**
  * 現在アクティブな背景地図 id（実行時状態は唯一これのみ）。
@@ -379,16 +379,16 @@ let currentBasemapId = 'osm';
 /**
  * 背景地図を切り替える（アクティブ背景を常に単一・最下に保つ）。
  *
- * 選択された id を BASEMAPS から引き、現アクティブ背景の layer→source を
+ * 選択された id を BUILTIN_BASEMAPS から引き、現アクティブ背景の layer→source を
  * remove してから選択 source を addSource し、`hazard_flood-layer` を
  * beforeId に addLayer して常に重畳より下（最下）へ挿入する（Req 1.3/
  * 1.4/5.4）。source id は背景 id（例 `osm`/`gsi_std`）、layer id は
  * `<id>-layer`（例 `osm-layer`）で既存初期スタイルの命名と一貫させる。
  *
- * 同一 id の再選択、および BASEMAPS に存在しない id は no-op として
+ * 同一 id の再選択、および BUILTIN_BASEMAPS に存在しない id は no-op として
  * 何も変更せず返る（不要な再生成・防御的無効 id 回避）。
  *
- * 選択 source の `attribution` は BASEMAPS で buildAttribution 経由に
+ * 選択 source の `attribution` は BUILTIN_BASEMAPS で buildAttribution 経由に
  * 構築済みで、未使用となった旧背景 source を除去することで MapLibre
  * 既定 AttributionControl が当該背景＋重畳のみへ自動更新される
  * （Req 3.3）。重畳（hazard_ 各種・skhb・route・hillshade）・既存
@@ -400,8 +400,8 @@ let currentBasemapId = 'osm';
  * @returns {void}
  */
 function setBasemap(id) {
-    // 防御的: BASEMAPS に無い id は no-op（既存背景を維持）
-    const entry = BASEMAPS.find((b) => b.id === id);
+    // 防御的: BUILTIN_BASEMAPS に無い id は no-op（既存背景を維持）
+    const entry = BUILTIN_BASEMAPS.find((b) => b.id === id);
     if (!entry) return;
     // 同一 id の再選択は no-op（不要な source/layer 再生成を回避）
     if (id === currentBasemapId) return;
@@ -414,7 +414,7 @@ function setBasemap(id) {
     map.removeLayer(prevLayerId);
     map.removeSource(prevSourceId);
 
-    // 選択 source を add。BASEMAPS は attribution を source の外に持つため
+    // 選択 source を add。BUILTIN_BASEMAPS は attribution を source の外に持つため
     // ここで source へマージして渡す（未マージだと切替後に出典が消える）。
     // 既定 AttributionControl は使用中 source の attribution を集約するため
     // これで背景に追従して出典が表示される（Req 3.1/3.2/3.3）。
@@ -437,13 +437,13 @@ function setBasemap(id) {
 /**
  * 背景地図切替コントロール（MapLibre IControl）。
  *
- * 地図左下に配置する背景地図の排他選択 UI。BASEMAPS の各エントリを
+ * 地図左下に配置する背景地図の排他選択 UI。BUILTIN_BASEMAPS の各エントリを
  * ネイティブ `<input type="radio">` ＋ `<label for>` として `<fieldset>`／
  * `<legend>` 内に生成し、選択を setBasemap へ結線する（Req 1.1/1.2/1.5/
  * 6.1/6.2/6.3）。
  *
  * DOM は document.createElement / textContent のみで構築し、innerHTML 経路に
- * データを流さない（security.md。ラベルは BASEMAPS の開発者定数だが安全な
+ * データを流さない（security.md。ラベルは BUILTIN_BASEMAPS の開発者定数だが安全な
  * DOM 構築に統一する）。ネイティブ radio／label／fieldset／legend を用いる
  * ことでキーボード操作（Req 6.1）・支援技術ラベル（Req 6.2）・選択状態の
  * 提示（checked radio。Req 6.3）を標準セマンティクスで満たし、独自 ARIA
@@ -474,7 +474,7 @@ class BasemapSwitcherControl {
      *
      * `maplibregl-ctrl maplibregl-ctrl-group` ＋ feature class
      * `basemap-switcher`（task 3.2 の CSS 標的）の div 内に、支援技術用
-     * 見出しの `<legend>` を持つ `<fieldset>` を作り、BASEMAPS の各
+     * 見出しの `<legend>` を持つ `<fieldset>` を作り、BUILTIN_BASEMAPS の各
      * エントリぶん `name="basemap"` の radio ＋ 対応 `<label for>` を
      * 生成する。currentBasemapId（既定 'osm'）に一致する radio を
      * checked にして現在選択を明示する（Req 1.2/1.5/1.6/6.2/6.3）。
@@ -511,8 +511,8 @@ class BasemapSwitcherControl {
         };
         fieldset.addEventListener('change', this._onChange);
 
-        // BASEMAPS の各エントリを radio ＋ label として安全な DOM API で構築
-        BASEMAPS.forEach((entry) => {
+        // BUILTIN_BASEMAPS の各エントリを radio ＋ label として安全な DOM API で構築
+        BUILTIN_BASEMAPS.forEach((entry) => {
             const inputId = `basemap-option-${entry.id}`;
 
             const input = document.createElement('input');
@@ -598,16 +598,16 @@ const map = new maplibregl.Map({
         version: 8,
         sources: {
             // 背景地図ソース（既定＝OSM）。
-            // 初期スタイルの osm source を BASEMAPS の osm エントリと一貫させ、
+            // 初期スタイルの osm source を BUILTIN_BASEMAPS の osm エントリと一貫させ、
             // 初回レンダリングと切替後レンダリングを同一にする（Req 1.6/3.3）。
-            // tiles/tileSize/maxzoom は BASEMAPS[].source、attribution は
-            // BASEMAPS[].attribution（buildAttribution 経由の安全な出典）から
-            // 取り、ハードコード literal は持たない（Req 3.1 は BASEMAPS 形で充足）。
-            // BASEMAPS / buildAttribution は上方で宣言済みのため参照は有効
+            // tiles/tileSize/maxzoom は BUILTIN_BASEMAPS[].source、attribution は
+            // BUILTIN_BASEMAPS[].attribution（buildAttribution 経由の安全な出典）から
+            // 取り、ハードコード literal は持たない（Req 3.1 は BUILTIN_BASEMAPS 形で充足）。
+            // BUILTIN_BASEMAPS / buildAttribution は上方で宣言済みのため参照は有効
             // （map 構築は const 宣言の後に実行され TDZ 非該当）。
             osm: {
-                ...BASEMAPS.find((b) => b.id === 'osm').source,
-                attribution: BASEMAPS.find((b) => b.id === 'osm').attribution,
+                ...BUILTIN_BASEMAPS.find((b) => b.id === 'osm').source,
+                attribution: BUILTIN_BASEMAPS.find((b) => b.id === 'osm').attribution,
             },
             // 重ねるハザードマップここから
             hazard_flood: {
